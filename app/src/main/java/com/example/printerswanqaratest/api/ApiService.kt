@@ -23,13 +23,13 @@ data class ResetPasswordResponse(val message: String)
 data class VerifyRucResponse(val valid: Boolean, val ruc: String)
 
 interface ApiService {
-    @POST("/general/login")
+    @POST("general/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-    @POST("/general/forgot-password")
+    @POST("general/forgot-password")
     suspend fun resetPassword(@Body request: ResetPasswordRequest): ResetPasswordResponse
 
-    @GET("/tenants/verify-ruc")
+    @GET("tenants/verify-ruc")
     suspend fun verifyRuc(@Query("ruc") ruc: String): VerifyRucResponse
 }
 
@@ -37,13 +37,14 @@ object ApiClient {
     private const val BASE_URL = "https://system.wanqara.org/api/v1/"
 
     // Provide context when building the client
-    fun createApiService(context: Context): ApiService {
+    fun createApiService(context: Context, withTenant: Boolean = true): ApiService {
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val original: Request = chain.request()
                 val ruc = AppStorage.getRuc(context)
                 val requestBuilder = original.newBuilder()
-                if (!ruc.isNullOrBlank()) {
+                // Only add X-tenant header if requested and RUC is present
+                if (withTenant && !ruc.isNullOrBlank()) {
                     requestBuilder.addHeader("X-tenant", ruc)
                 }
                 chain.proceed(requestBuilder.build())

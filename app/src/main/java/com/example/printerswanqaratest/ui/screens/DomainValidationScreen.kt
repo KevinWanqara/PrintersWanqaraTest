@@ -1,5 +1,6 @@
 package com.example.printerswanqaratest.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +23,7 @@ fun DomainValidationScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    val apiService = remember { ApiClient.createApiService(context) }
+    val apiService = ApiClient.createApiService(context)
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -50,16 +51,25 @@ fun DomainValidationScreen(
                     coroutineScope.launch {
                         loading = true
                         errorMessage = null
+                        Toast.makeText(context, "Button pressed, validating RUC...", Toast.LENGTH_SHORT).show()
                         try {
+                            // Call the API to verify the RUC/domain
+                            println( "Validating RUC: $ruc")
                             val response = apiService.verifyRuc(ruc)
+                            println("API Response: $response")
+                            Toast.makeText(context, "API called!", Toast.LENGTH_SHORT).show()
                             if (response.valid) {
+                                println("RUC/domain validated successfully: ${response.ruc}")
                                 AppStorage.saveRuc(context, response.ruc)
                                 onDomainValidated()
                             } else {
+                                println("Invalid RUC/domain: ${response.ruc}")
                                 errorMessage = "Invalid RUC/domain."
+
                             }
                         } catch (e: Exception) {
                             errorMessage = "Validation failed: ${e.localizedMessage}"
+                            Toast.makeText(context, "API error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                         } finally {
                             loading = false
                         }
