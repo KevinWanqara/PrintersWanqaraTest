@@ -1,24 +1,40 @@
 package com.example.printerswanqaratest.ui.screens
 
+import android.graphics.drawable.GradientDrawable
+import android.widget.TextView
 import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Domain
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.printerswanqaratest.api.ApiClient
 import com.example.printerswanqaratest.data.AppStorage
+import com.example.printerswanqaratest.ui.theme.Primary
 import kotlinx.coroutines.launch
 
 
 @Composable
 fun DomainValidationScreen(
     onDomainValidated: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    logoResId: Int
 ) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var ruc by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -31,19 +47,57 @@ fun DomainValidationScreen(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(if (true) 0.9f else 0.9f)
                 .wrapContentHeight()
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Enter your RUC/domain", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(16.dp))
-            TextField(
+            // Logo
+            Image(
+                painter = painterResource(id = logoResId),
+                contentDescription = "Logo",
+                modifier = Modifier.size(120.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Bienvenido a Wanqara",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Primary,
+                textAlign =  TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Por favor, ingrese el dominio de su empresa para continuar.",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            // Label on top
+            Text(
+                "Ingresa tu número de RUC",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.align(Alignment.Start),
+                color = Color.Gray
+            )
+            OutlinedTextField(
                 value = ruc,
                 onValueChange = { ruc = it },
-                label = { Text("RUC") },
+                placeholder = { Text("Ingrese el dominio de su empresa") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(Icons.Default.Domain, contentDescription = null, tint = Primary)
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Primary,
+                    unfocusedBorderColor = Primary,
+                    focusedLabelColor = Primary,
+                    cursorColor = Primary
+                ),
+
+                visualTransformation = VisualTransformation.None
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
@@ -51,35 +105,39 @@ fun DomainValidationScreen(
                     coroutineScope.launch {
                         loading = true
                         errorMessage = null
-                        Toast.makeText(context, "Button pressed, validating RUC...", Toast.LENGTH_SHORT).show()
                         try {
-                            // Call the API to verify the RUC/domain
-                            println( "Validating RUC: $ruc")
                             val response = apiService.verifyRuc(ruc)
-                            println("API Response: $response")
-                            Toast.makeText(context, "API called!", Toast.LENGTH_SHORT).show()
-                            if (response.valid) {
-                                println("RUC/domain validated successfully: ${response.ruc}")
-                                AppStorage.saveRuc(context, response.ruc)
+                            if (response.data.ruc.isNotBlank()) {
+                                AppStorage.saveRuc(context, response.data.ruc)
+                                val toast = Toast(context)
+                                val textView = TextView(context)
+                                textView.text = "Dominio validado correctamente"
+                                val background = GradientDrawable()
+                                background.cornerRadius = 16f
+                                background.setColor(Primary.toArgb())
+                                textView.background = background
+                                textView.setPadding(32, 16, 32, 16)
+                                textView.setTextColor(android.graphics.Color.WHITE)
+                                toast.view = textView
+                                toast.duration = Toast.LENGTH_SHORT
+                                toast.show()
                                 onDomainValidated()
                             } else {
-                                println("Invalid RUC/domain: ${response.ruc}")
-                                errorMessage = "Invalid RUC/domain."
-
+                                errorMessage = "Dominio inválido. Por favor, verifica e intenta nuevamente."
                             }
                         } catch (e: Exception) {
-                            errorMessage = "Validation failed: ${e.localizedMessage}"
-                            Toast.makeText(context, "API error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            errorMessage = "Error al validar el dominio: ${e.localizedMessage}"
+                            Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                         } finally {
                             loading = false
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = ruc.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                enabled = ruc.isNotBlank() && !loading,
+                colors = ButtonDefaults.buttonColors(containerColor = Primary)
             ) {
-                Text("Validate", style = MaterialTheme.typography.titleMedium)
+                Text("Validar", style = MaterialTheme.typography.titleMedium)
             }
             if (loading) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -87,8 +145,26 @@ fun DomainValidationScreen(
             }
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
+                Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             }
+            Spacer(modifier = Modifier.height(32.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "¿Tienes problemas para acceder?",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Contáctanos",
+                color = Primary,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                modifier = Modifier
+                    .clickable { uriHandler.openUri("https://wanqara.com/contacto/") }
+                    .padding(top = 4.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
         }
     }
 }

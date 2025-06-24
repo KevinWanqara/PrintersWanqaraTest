@@ -12,16 +12,38 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import com.example.printerswanqaratest.data.AppStorage
 import android.content.Context
+import com.example.printerswanqaratest.api.sales.SalesService
 
 // Data classes for login
-data class LoginRequest(val username: String, val password: String)
-data class LoginResponse(val token: String)
+data class LoginRequest(val email: String, val password: String)
+data class LoginResponse(
+    val data: UserData,
+)
+
+data class UserData(
+    val token: String,
+    val user: UserDetails
+)
+data class UserDetails(
+    val id: String,
+    val name: String,
+    val email: String,
+
+)
 
 data class ResetPasswordRequest(val email: String)
 data class ResetPasswordResponse(val message: String)
 
-data class VerifyRucResponse(val valid: Boolean, val ruc: String)
+data class VerifyRucResponse(
+    val data: RucData,
+    val message: String
+)
 
+data class RucData(
+    val id: String,
+    val ruc: String,
+    val name: String
+)
 interface ApiService {
     @POST("general/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
@@ -42,11 +64,21 @@ object ApiClient {
             .addInterceptor { chain ->
                 val original: Request = chain.request()
                 val ruc = AppStorage.getRuc(context)
+                val token = AppStorage.getToken(context)
+                println("RUC from storage: $ruc") // Debug log to check RUC value
                 val requestBuilder = original.newBuilder()
-                // Only add X-tenant header if requested and RUC is present
-                if (withTenant && !ruc.isNullOrBlank()) {
-                    requestBuilder.addHeader("X-tenant", ruc)
+                    .addHeader("Accept", "application/json") // Add Accept header
+
+
+                if (ruc != null) {
+                    println("Adding X-tenant header with RUC: $ruc") // Debug log to confirm header addition
+                    requestBuilder.addHeader("X-tenant", ruc.trim()) // Add X-tenant header if RUC is not null
                 }
+                if (token != null) {
+                    println("Adding Authorization header with token: $token") // Debug log to confirm header addition
+                    requestBuilder.addHeader("Authorization", "Bearer $token") // Add Authorization header if token is not null
+                }
+
                 chain.proceed(requestBuilder.build())
             }
             .build()
@@ -56,5 +88,17 @@ object ApiClient {
             .client(client)
             .build()
         return retrofit.create(ApiService::class.java)
+    }
+
+    fun createSalesService(context: Context): SalesService {
+        val client = OkHttpClient.Builder()
+            // ...add interceptors as needed...
+            .build()
+        val retrofit = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+        return retrofit.create(SalesService::class.java)
     }
 }
