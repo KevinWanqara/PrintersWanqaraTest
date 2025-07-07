@@ -28,7 +28,7 @@ import kotlin.text.takeWhile
 import kotlin.text.toIntOrNull
 
 @Composable
-private fun UsbForm() {
+fun UsbForm() {
     var name by remember { mutableStateOf("") }
     var charNumber by remember { mutableStateOf("") }
     var copyNumber by remember { mutableStateOf("") }
@@ -101,4 +101,8 @@ private fun UsbForm() {
             Text("Save USB Printer")
         }
     }
+}
+
+fun saveUsbPrinter(name: String, i: Int, i1: Int, selectedDoc: String) {
+
 }

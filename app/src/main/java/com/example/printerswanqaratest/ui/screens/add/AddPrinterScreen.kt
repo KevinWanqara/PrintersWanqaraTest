@@ -90,7 +90,7 @@ fun AddPrinterScreen() {
         ) { mode ->
             when (mode) {
                 PrinterType.USB -> UsbForm()
-                PrinterType.BLUETOOTH -> BluetoothForm()
+                PrinterType.BLUETOOTH -> BluetoothForm(snackbarHostState)
                 PrinterType.WIFI -> WifiForm(snackbarHostState)
             }
         }
@@ -98,126 +98,30 @@ fun AddPrinterScreen() {
 }
 
 @Composable
-private fun UsbForm() {
-    var name by remember { mutableStateOf("") }
-    var charNumber by remember { mutableStateOf("") }
-    var copyNumber by remember { mutableStateOf("") }
-    var docTypeExpanded by remember { mutableStateOf(false) }
-    val docTypes = listOf("DNI", "RUC", "Passport")
-    var selectedDoc by remember { mutableStateOf(docTypes.first()) }
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("USB Printer Name") })
-        OutlinedTextField(
-            value = charNumber,
-            onValueChange = { charNumber = it.takeWhile { c -> c.isDigit() } },
-            label = { Text("Characters Number") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        OutlinedTextField(
-            value = copyNumber,
-            onValueChange = { copyNumber = it.takeWhile { c -> c.isDigit() } },
-            label = { Text("Copy Number") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        Box {
-            OutlinedButton(onClick = { docTypeExpanded = true }) {
-                Text("Tipo Documento: $selectedDoc")
-            }
-            DropdownMenu(expanded = docTypeExpanded, onDismissRequest = { docTypeExpanded = false }) {
-                docTypes.forEach { type ->
-                    DropdownMenuItem(text = { Text(type) }, onClick = {
-                        selectedDoc = type; docTypeExpanded = false
-                    })
-                }
-            }
-        }
-        Button(
-            onClick = { saveUsbPrinter(name, charNumber.toIntOrNull() ?: 0, copyNumber.toIntOrNull() ?: 0, selectedDoc) },
-            shape = RoundedCornerShape(24.dp)
-        ) {
-            Text("Save USB Printer")
-        }
+fun UsbForm() {
+    // Mockup only
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("USB printer form (mockup)")
     }
 }
 
 @Composable
-private fun BluetoothForm() {
-    // mock paired devices
-    val devices = listOf("BT_Printer_01", "BT_Printer_02")
-    var selected by remember { mutableStateOf(devices.first()) }
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Paired Devices", style = MaterialTheme.typography.titleMedium)
-        devices.forEach { dev ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = selected==dev, onClick = { selected = dev })
-                Text(dev)
-            }
-        }
-        Button(
-            onClick = { saveBluetoothPrinter(selected) },
-            shape = RoundedCornerShape(24.dp)
-        ) { Text("Save Bluetooth Printer") }
+fun BluetoothForm() {
+    // Mockup only
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Bluetooth printer form (mockup)")
     }
 }
 
-@Composable
-private fun WifiForm(snackbarHostState: SnackbarHostState) {
-    var name by remember { mutableStateOf("") }
-    var ip by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf("") }
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Printer Name") })
-        OutlinedTextField(value = ip, onValueChange = { ip = it }, label = { Text("IP Address") })
-        OutlinedTextField(
-            value = port,
-            onValueChange = { port = it.takeWhile { c -> c.isDigit() } },
-            label = { Text("Port") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        val context = LocalContext.current
-        val scope = rememberCoroutineScope()
-        Button(
-            onClick = {
-                scope.launch {
-                    val success = saveWifiPrinter(
-                        context,
-                        name,
-                        ip,
-                        port.toIntOrNull() ?: 0
-                    )
-                    val message = if (success) {
-                        "Printer saved successfully"
-                    } else {
-                        "Failed to save printer"
-                    }
-                    snackbarHostState.showSnackbar(message)
-                }
-            },
-            shape = RoundedCornerShape(24.dp)
-        ) { Text("Save WiFi Printer") }
-    }
-}
 
 // Mock save functions
 fun saveUsbPrinter(name: String, chars: Int, copies: Int, docType: String) {
     // TODO: persist USB settings
 }
-private fun saveBluetoothPrinter(device: String) {
+fun saveBluetoothPrinter(device: String) {
     // TODO: persist Bluetooth settings
 }
-private suspend fun saveWifiPrinter(
+suspend fun saveWifiPrinter(
     context: android.content.Context,
     name: String,
     ip: String,
@@ -245,3 +149,14 @@ private suspend fun saveWifiPrinter(
         false
     }
 }
+suspend fun savePrinterToDb(context: android.content.Context, printer: PrintersEntity): Boolean {
+    return try {
+        withContext(Dispatchers.IO) {
+            val db = DatabaseProvider.getDatabase(context)
+            db.printersDAO().insertAll(printer)
+        }
+        true
+    } catch (_: Exception) {
+        false
+    }
+} }
