@@ -1,40 +1,53 @@
 package com.example.printerswanqaratest
 
+import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Text
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.printerswanqaratest.ui.theme.PrintersWanqaraTestTheme
-import androidx.compose.material3.Icon
 import com.example.printerswanqaratest.data.TokenDatabaseHelper
 import com.example.printerswanqaratest.ui.screens.LoginScreen
 import com.example.printerswanqaratest.ui.screens.DomainValidationScreen
+import com.example.printerswanqaratest.ui.screens.add.AddPrinterScreen
+import com.example.printerswanqaratest.ui.screens.edit.EditPrinterScreen
+import com.example.printerswanqaratest.ui.screens.list.ListPrintersScreen
+import com.example.printerswanqaratest.ui.screens.configure.ConfigurePrinterScreen
+import com.example.printerswanqaratest.ui.screens.tests.PrinterTestScreen
+import com.example.printerswanqaratest.ui.screens.message.MessageScreen
 import com.example.printerswanqaratest.data.AppStorage
-import com.example.printerswanqaratest.core.print.test.PrintBluetoothTest
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.example.printerswanqaratest.ui.screens.home.HomeScreen
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.TopAppBarDefaults
+import com.example.printerswanqaratest.ui.theme.Primary
 
 class MainActivity : ComponentActivity() {
     //Main Activity
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,16 +65,20 @@ class MainActivity : ComponentActivity() {
                     isDomainValidated = !ruc.isNullOrBlank()
                     isLoggedIn = tokenDb.getToken() != null
                 }
+                val navEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navEntry?.destination?.route
                 when {
                     !isDomainValidated -> {
-                        DomainValidationScreen(onDomainValidated = {
-                            isDomainValidated = true
+                        DomainValidationScreen(
+                            onDomainValidated = {
+                                isDomainValidated = true
 
-                        },
-                                logoResId = R.drawable.ic_wanqara_logo_foreground
+                            },
+                            logoResId = R.drawable.ic_wanqara_logo_foreground
 
                         )
                     }
+
                     !isLoggedIn -> {
                         LoginScreen(
                             onLoginSuccess = { token ->
@@ -74,72 +91,69 @@ class MainActivity : ComponentActivity() {
                             logoResId = R.drawable.ic_wanqara_logo_foreground
                         )
                     }
-                    else -> {
-                        val configuration = LocalConfiguration.current
-                        val screenWidth = configuration.screenWidthDp
-                        var menuExpanded by remember { mutableStateOf(false) }
-                        Scaffold(
-                            modifier = Modifier.fillMaxSize(),
-                            topBar = {
-                                CenterAlignedTopAppBar(
-                                    title = { Text("Printers Wanqara") },
-                                    navigationIcon = {
-                                        IconButton(onClick = { menuExpanded = true }) {
-                                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                                        }
-                                        DropdownMenu(
-                                            expanded = menuExpanded,
-                                            onDismissRequest = { menuExpanded = false }
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = { Text("Home") },
-                                                onClick = {
-                                                    navController.navigate("home")
-                                                    menuExpanded = false
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("Add Printer") },
-                                                onClick = {
-                                                    navController.navigate("add_printer")
-                                                    menuExpanded = false
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("Bluetooth Test") },
-                                                onClick = {
-                                                    menuExpanded = false
-                                                    navController.navigate("add_printer")
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("Print Bluetooth test") },
-                                                onClick = {
-                                                    if (!PrintBluetoothTest(context)("60:6E:41:59:BD:6F")) {
-                                                        CoroutineScope(Dispatchers.Main).launch {
-                                                            Toast.makeText(context, "Impresora no vinculada", Toast.LENGTH_SHORT).show()
-                                                        }
 
-                                                    }
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("Message") },
-                                                onClick = {
-                                                    navController.navigate("message")
-                                                    menuExpanded = false
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("Printer Test") },
-                                                onClick = {
-                                                    navController.navigate("printer_test")
-                                                    menuExpanded = false
-                                                }
-                                            )
+                    else -> {
+                        Scaffold(
+                             modifier = Modifier.fillMaxSize(),
+                            topBar = {
+                                 CenterAlignedTopAppBar(
+                                     title = { Text("Printers Wanqara", color = Color.White) },
+                                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                         containerColor = Primary,
+                                         navigationIconContentColor = Color.White,
+                                         actionIconContentColor = Color.White
+                                     ),
+                                     navigationIcon = {
+                                        if (currentRoute != "home") IconButton(onClick = { navController.navigate("home") { popUpTo("home") } }) {
+                                             Icon(Icons.Filled.Home, contentDescription = "Home")
+                                         }
+                                     },
+                                     actions = {
+                                         if (currentRoute == "home") {
+                                            IconButton(onClick = { navController.navigate("edit_printer") }) {
+                                                Icon(
+                                                    Icons.Filled.Edit,
+                                                    contentDescription = "Edit"
+                                                )
+                                            }
+                                            IconButton(onClick = { navController.navigate("list_printers") }) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.List,
+                                                    contentDescription = "List"
+                                                )
+                                            }
+                                            IconButton(onClick = { navController.navigate("configure_printer") }) {
+                                                Icon(
+                                                    Icons.Filled.Settings,
+                                                    contentDescription = "Configure"
+                                                )
+                                            }
+                                            IconButton(onClick = { navController.navigate("printer_test") }) {
+                                                Icon(
+                                                    Icons.Filled.Print,
+                                                    contentDescription = "Test"
+                                                )
+                                            }
+                                            IconButton(onClick = { navController.navigate("message") }) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.Message,
+                                                    contentDescription = "Message"
+                                                )
+                                            }
                                         }
                                     }
                                 )
+                            },
+                            floatingActionButton = {
+                                if (currentRoute == "home") {
+                                    FloatingActionButton(
+                                        onClick = { navController.navigate("add_printer") },
+                                        containerColor = Primary,
+                                        contentColor = Color.White
+                                    ) {
+                                        Icon(Icons.Filled.Add, contentDescription = "Add Printer" )
+                                    }
+                                }
                             }
                         ) { innerPadding ->
                             NavHost(
@@ -152,8 +166,10 @@ class MainActivity : ComponentActivity() {
                                 composable("home") { HomeScreen(navController) }
                                 composable("add_printer") { AddPrinterScreen() }
                                 composable("edit_printer") { EditPrinterScreen() }
-                                composable("message") { MessageScreen() }
+                                composable("list_printers") { ListPrintersScreen() }
+                                composable("configure_printer") { ConfigurePrinterScreen() }
                                 composable("printer_test") { PrinterTestScreen() }
+                                composable("message") { MessageScreen() }
                             }
                         }
                     }
@@ -161,79 +177,23 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Main Activity Preview")
-@Composable
-fun MainActivityPreview() {
-    PrintersWanqaraTestTheme {
-        val navController = rememberNavController()
-        val configuration = LocalConfiguration.current
-        val screenWidth = configuration.screenWidthDp
-        var menuExpanded by remember { mutableStateOf(false) }
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Printers Wanqara") },
-                    navigationIcon = {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Home") },
-                                onClick = {
-                                    navController.navigate("home")
-                                    menuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Add Printer") },
-                                onClick = {
-                                    navController.navigate("add_printer")
-                                    menuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Edit Printer") },
-                                onClick = {
-                                    navController.navigate("edit_printer")
-                                    menuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Message") },
-                                onClick = {
-                                    navController.navigate("message")
-                                    menuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Printer Test") },
-                                onClick = {
-                                    navController.navigate("printer_test")
-                                    menuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Printer Test") },
-                                onClick = {
-                                    navController.navigate("printer_test")
-                                    menuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                )
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Preview(showBackground = true, name = "Main Activity Preview")
+    @Composable
+    fun MainActivityPreview() {
+        PrintersWanqaraTestTheme {
+            val navController = rememberNavController()
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = { Text("Printers Wanqara") }
+                    )
+                }
+            ) { innerPadding ->
+                HomeScreen(navController, modifier = Modifier.padding(innerPadding))
             }
-        ) { innerPadding ->
-            // You can preview a single screen here, e.g. HomeScreen(navController)
-            HomeScreen(navController)
         }
     }
 }
