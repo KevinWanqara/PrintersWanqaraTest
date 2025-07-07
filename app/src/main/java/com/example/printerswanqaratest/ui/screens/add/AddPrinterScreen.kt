@@ -23,6 +23,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import com.example.printerswanqaratest.data.database.entities.PrintersEntity
+import androidx.compose.ui.platform.LocalContext
+import com.example.printerswanqaratest.data.database.DatabaseProvider
+import com.example.printerswanqaratest.data.database.repositories.PrinterRepository
+import com.example.printerswanqaratest.domain.services.AddPrinters
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 @Composable
 fun AddPrinterScreen() {
     var selectedMode by remember { mutableStateOf(PrinterType.USB) }
@@ -176,8 +183,9 @@ private fun WifiForm() {
             label = { Text("Port") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
+        val context = LocalContext.current
         Button(
-            onClick = { saveWifiPrinter(name, ip, port.toIntOrNull() ?: 0) },
+            onClick = { saveWifiPrinter(context, name, ip, port.toIntOrNull() ?: 0) },
             shape = RoundedCornerShape(24.dp)
         ) { Text("Save WiFi Printer") }
     }
@@ -190,6 +198,21 @@ fun saveUsbPrinter(name: String, chars: Int, copies: Int, docType: String) {
 private fun saveBluetoothPrinter(device: String) {
     // TODO: persist Bluetooth settings
 }
-private fun saveWifiPrinter(name: String, ip: String, port: Int) {
-    // TODO: persist WiFi settings
+private fun saveWifiPrinter(context: android.content.Context, name: String, ip: String, port: Int) {
+    val entity = PrintersEntity(
+        name = name,
+        fontSize = "A",
+        documentType = "IMPRESION_RECIBO",
+        copyNumber = 1,
+        charactersNumber = 32,
+        type = PrinterType.WIFI.type,
+        address = ip,
+        port = port
+    )
+    CoroutineScope(Dispatchers.IO).launch {
+        val db = DatabaseProvider.getDatabase(context)
+        val repository = PrinterRepository(db.printersDAO())
+        val addPrinter = AddPrinters(repository)
+        addPrinter(entity)
+    }
 }
