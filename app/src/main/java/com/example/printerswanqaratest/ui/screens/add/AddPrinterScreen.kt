@@ -23,15 +23,25 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import com.example.printerswanqaratest.data.database.entities.PrintersEntity
+import androidx.compose.ui.platform.LocalContext
+import com.example.printerswanqaratest.data.database.DatabaseProvider
+import com.example.printerswanqaratest.data.database.repositories.PrinterRepository
+import com.example.printerswanqaratest.domain.services.AddPrinters
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.rememberCoroutineScope
 @Composable
 fun AddPrinterScreen() {
     var selectedMode by remember { mutableStateOf(PrinterType.USB) }
+    val snackbarHostState = remember { SnackbarHostState() }
     val modes = listOf(
         PrinterType.USB to Icons.Default.Usb,
         PrinterType.BLUETOOTH to Icons.Default.Bluetooth,
         PrinterType.WIFI to Icons.Default.Wifi
     )
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         // mode switches
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -81,7 +91,7 @@ fun AddPrinterScreen() {
             when (mode) {
                 PrinterType.USB -> UsbForm()
                 PrinterType.BLUETOOTH -> BluetoothForm()
-                PrinterType.WIFI -> WifiForm()
+                PrinterType.WIFI -> WifiForm(snackbarHostState)
             }
         }
     }
@@ -159,7 +169,7 @@ private fun BluetoothForm() {
 }
 
 @Composable
-private fun WifiForm() {
+private fun WifiForm(snackbarHostState: SnackbarHostState) {
     var name by remember { mutableStateOf("") }
     var ip by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -176,8 +186,25 @@ private fun WifiForm() {
             label = { Text("Port") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         Button(
-            onClick = { saveWifiPrinter(name, ip, port.toIntOrNull() ?: 0) },
+            onClick = {
+                scope.launch {
+                    val success = saveWifiPrinter(
+                        context,
+                        name,
+                        ip,
+                        port.toIntOrNull() ?: 0
+                    )
+                    val message = if (success) {
+                        "Printer saved successfully"
+                    } else {
+                        "Failed to save printer"
+                    }
+                    snackbarHostState.showSnackbar(message)
+                }
+            },
             shape = RoundedCornerShape(24.dp)
         ) { Text("Save WiFi Printer") }
     }
@@ -190,6 +217,31 @@ fun saveUsbPrinter(name: String, chars: Int, copies: Int, docType: String) {
 private fun saveBluetoothPrinter(device: String) {
     // TODO: persist Bluetooth settings
 }
-private fun saveWifiPrinter(name: String, ip: String, port: Int) {
-    // TODO: persist WiFi settings
+private suspend fun saveWifiPrinter(
+    context: android.content.Context,
+    name: String,
+    ip: String,
+    port: Int
+): Boolean {
+    val entity = PrintersEntity(
+        name = name,
+        fontSize = "A",
+        documentType = "IMPRESION_RECIBO",
+        copyNumber = 1,
+        charactersNumber = 32,
+        type = PrinterType.WIFI.type,
+        address = ip,
+        port = port
+    )
+    return try {
+        withContext(Dispatchers.IO) {
+            val db = DatabaseProvider.getDatabase(context)
+            val repository = PrinterRepository(db.printersDAO())
+            val addPrinter = AddPrinters(repository)
+            addPrinter(entity)
+        }
+        true
+    } catch (_: Exception) {
+        false
+    }
 }
