@@ -5,13 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.Text
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,8 +28,8 @@ import com.example.printerswanqaratest.data.AppStorage
 import com.example.printerswanqaratest.ui.screens.home.HomeScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Add
@@ -40,9 +37,12 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.example.printerswanqaratest.ui.theme.Primary
 
 class MainActivity : ComponentActivity() {
@@ -96,48 +96,58 @@ class MainActivity : ComponentActivity() {
                         Scaffold(
                              modifier = Modifier.fillMaxSize(),
                             topBar = {
-                                 CenterAlignedTopAppBar(
-                                     title = { Text("Printers Wanqara", color = Color.White) },
-                                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                         containerColor = Primary,
-                                         navigationIconContentColor = Color.White,
-                                         actionIconContentColor = Color.White
-                                     ),
-                                     navigationIcon = {
-                                        if (currentRoute != "home") IconButton(onClick = { navController.navigate("home") { popUpTo("home") } }) {
-                                             Icon(Icons.Filled.Home, contentDescription = "Home")
-                                         }
-                                     },
-                                     actions = {
-                                         if (currentRoute == "home") {
-                                            IconButton(onClick = { navController.navigate("edit_printer") }) {
+                                var profileMenuExpanded by remember { mutableStateOf(false) }
+                                val showBack = currentRoute == "add_printer" || (currentRoute != null && currentRoute != "list_printers")
+                                CenterAlignedTopAppBar(
+                                    title = {
+                                        when (currentRoute) {
+                                            "add_printer" -> Text("Agregar", color = Color.White)
+                                            "list_printers", null -> {
+                                                Row(verticalAlignment = Alignment.CenterVertically ,) {
+                                                    Icon(
+                                                        painterResource(id = R.drawable.ic_wanqara_logo_foreground),
+                                                        contentDescription = "Wanqara Logo",
+                                                        modifier = Modifier.size(32.dp),
+                                                        tint = Color.White
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text("Printers Wanqara", color = Color.White)
+                                                }
+                                            }
+                                            else -> Text("")
+                                        }
+                                    },
+                                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                        containerColor = Primary,
+                                        navigationIconContentColor = Color.White,
+                                        actionIconContentColor = Color.White
+                                    ),
+                                    navigationIcon = {
+                                        if (showBack) {
+                                            IconButton(onClick = { navController.popBackStack() }) {
                                                 Icon(
-                                                    Icons.Filled.Edit,
-                                                    contentDescription = "Edit"
+                                                    imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack,
+                                                    contentDescription = "Back"
                                                 )
                                             }
-                                            IconButton(onClick = { navController.navigate("list_printers") }) {
-                                                Icon(
-                                                    Icons.AutoMirrored.Filled.List,
-                                                    contentDescription = "List"
-                                                )
+                                        }
+                                    },
+                                    actions = {
+                                        Box {
+                                            IconButton(onClick = { profileMenuExpanded = true }) {
+                                                Icon(Icons.Filled.Person, contentDescription = "Profile")
                                             }
-                                            IconButton(onClick = { navController.navigate("configure_printer") }) {
-                                                Icon(
-                                                    Icons.Filled.Settings,
-                                                    contentDescription = "Configure"
+                                            DropdownMenu(
+                                                expanded = profileMenuExpanded,
+                                                onDismissRequest = { profileMenuExpanded = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Profile") },
+                                                    onClick = { profileMenuExpanded = false /* TODO: Navigate to profile */ }
                                                 )
-                                            }
-                                            IconButton(onClick = { navController.navigate("printer_test") }) {
-                                                Icon(
-                                                    Icons.Filled.Print,
-                                                    contentDescription = "Test"
-                                                )
-                                            }
-                                            IconButton(onClick = { navController.navigate("message") }) {
-                                                Icon(
-                                                    Icons.AutoMirrored.Filled.Message,
-                                                    contentDescription = "Message"
+                                                DropdownMenuItem(
+                                                    text = { Text("Logout") },
+                                                    onClick = { profileMenuExpanded = false /* TODO: Handle logout */ }
                                                 )
                                             }
                                         }
@@ -145,7 +155,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             },
                             floatingActionButton = {
-                                if (currentRoute == "home") {
+                                if (currentRoute == "list_printers") {
                                     FloatingActionButton(
                                         onClick = { navController.navigate("add_printer") },
                                         containerColor = Primary,
@@ -158,7 +168,7 @@ class MainActivity : ComponentActivity() {
                         ) { innerPadding ->
                             NavHost(
                                 navController = navController,
-                                startDestination = "home",
+                                startDestination = "list_printers",
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(innerPadding)
@@ -188,8 +198,10 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
                     CenterAlignedTopAppBar(
-                        title = { Text("Printers Wanqara") }
+                        title = { Text("Printers Wanqara") },
+
                     )
+
                 }
             ) { innerPadding ->
                 HomeScreen(navController, modifier = Modifier.padding(innerPadding))

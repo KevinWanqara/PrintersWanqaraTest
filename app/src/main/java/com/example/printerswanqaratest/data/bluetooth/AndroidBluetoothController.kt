@@ -1,4 +1,4 @@
-package com.example.printermobile.data.bluetooth
+package com.example.printerswanqaratest.data.bluetooth
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import com.example.printerswanqaratest.data.bluetooth.FoundDeviceReceiver
 import com.example.printerswanqaratest.data.bluetooth.toBluetoothDomain
 import com.example.printerswanqaratest.domain.models.BluetoothController
 import com.example.printerswanqaratest.domain.models.BluetoothDomain
@@ -128,7 +129,7 @@ class AndroidBluetoothController(
                 }
             }
             currentClientSocket = bluetoothAdapter
-                ?.getRemoteDevice(device.getAddress())
+                ?.getRemoteDevice(device.address)
                 ?.createRfcommSocketToServiceRecord(
                     UUID.fromString(SERVICE_UUID)
                 )
@@ -174,6 +175,21 @@ class AndroidBluetoothController(
 
     private fun hasPermission(permission: String): Boolean {
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun pairDevice(device: BluetoothDomain, onResult: (Boolean) -> Unit) {
+        val remoteDevice = bluetoothAdapter?.getRemoteDevice(device.address)
+        if (remoteDevice != null) {
+            try {
+                val method = remoteDevice.javaClass.getMethod("createBond")
+                val result = method.invoke(remoteDevice) as? Boolean ?: false
+                onResult(result)
+            } catch (e: Exception) {
+                onResult(false)
+            }
+        } else {
+            onResult(false)
+        }
     }
 
     companion object {

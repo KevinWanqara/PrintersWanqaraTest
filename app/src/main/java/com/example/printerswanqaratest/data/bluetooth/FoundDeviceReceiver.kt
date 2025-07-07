@@ -1,4 +1,4 @@
-package com.example.printermobile.data.bluetooth
+package com.example.printerswanqaratest.data.bluetooth
 
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver

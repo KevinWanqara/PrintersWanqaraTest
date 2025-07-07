@@ -80,29 +80,6 @@ fun UsbForm() {
                 }
             }
         }
-        Button(
-            onClick = {
-                saveUsbPrinter(
-                    name,
-                    charNumber.toIntOrNull() ?: 0,
-                    copyNumber.toIntOrNull() ?: 0,
-                    selectedDoc
-                )
-            },
-            shape = RoundedCornerShape(24.dp),
-            modifier = Modifier
-                .fillMaxWidth(0.8f) // Takes 80% of the column width
-                .padding(top = 16.dp), // More space above the button
-            contentPadding = PaddingValues(
-                vertical = 12.dp,
-                horizontal = 24.dp
-            ) // Decent internal padding
-        ) {
-            Text("Save USB Printer")
-        }
+
     }
-}
-
-fun saveUsbPrinter(name: String, i: Int, i1: Int, selectedDoc: String) {
-
 }
