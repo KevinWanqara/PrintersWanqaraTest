@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbManager
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import com.dantsu.escposprinter.connection.usb.UsbOutputStream
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections
@@ -42,6 +43,7 @@ class PrinterBuilder(private val tipo: String?) {
     private val df = DecimalFormat("0.00", symbols)
     private var port: Int? = null
     private var address: String? = null
+
 
     @SuppressLint("MissingPermission")
     fun InicializarImpresoraBluetooth(address: String): Boolean {
@@ -112,7 +114,12 @@ class PrinterBuilder(private val tipo: String?) {
                 }
             }
             val filter = IntentFilter(ACTION_USB_PERMISSION)
-            context.registerReceiver(usbReceiver, filter)
+            ContextCompat.registerReceiver(
+                context,
+                usbReceiver,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
             val usbConnection = UsbPrintersConnections.selectFirstConnected(context)
             val usbManager =
                 context.getSystemService(AppCompatActivity.USB_SERVICE) as UsbManager
@@ -120,7 +127,7 @@ class PrinterBuilder(private val tipo: String?) {
             if (usbConnection != null && usbManager != null) {
                 val permissionIntent: PendingIntent = PendingIntent.getBroadcast(
                     context, 0, Intent(ACTION_USB_PERMISSION),
-                    PendingIntent.FLAG_MUTABLE
+                    PendingIntent.FLAG_IMMUTABLE
                 )
                 if (!usbManager.hasPermission(usbConnection.device)) {
                     usbManager.requestPermission(usbConnection.device, permissionIntent)
@@ -524,10 +531,13 @@ class PrinterBuilder(private val tipo: String?) {
 
     fun imprimirFacturaElectronica(
         js: JSONObject?,
+        sj : JSONObject?,
         copias: Int,
         caracteres: Int,
-        programa: String
+
     ) {
+        println("Imprimiendo factura electronica")
+        println(js.toString())
         try {
             if (js == null) return
 
@@ -542,266 +552,76 @@ class PrinterBuilder(private val tipo: String?) {
             prn.lineHeight2()
             prn.alineadoCentro()
             prn.dobleAltoOn()
-            //prn.lineHeight();
-            prn.agregarTexto("Factura Electrónica Nº:")
-            prn.escribirTextoSinSalto(js.optString("numeroDocumentoOv"))
+
+
+
+
+            prn.agregarSalto()
+            prn.dobleAltoOff()
+            prn.setFontD()
+            prn.negritaOff()
+            if (sj != null) {
+
+                prn.agregarSalto()
+                if (sj.optString("business_name") != "null") {
+                    prn.escribirTextoSinSalto(sj.optString("business_name"))
+                    prn.agregarSalto()
+                }
+                prn.escribirTextoSinSalto("RUC: " + sj.optString("ruc"))
+                prn.agregarSalto()
+                prn.setFontB()
+                prn.escribirTextoSinSalto("Dirección: " + sj.optString("address"))
+                prn.agregarSalto()
+                if (sj.optString("phone") != "null") {
+                    prn.escribirTextoSinSalto("Teléfono: " + sj.optString("phone"))
+                }
+                prn.agregarSalto()
+                if (sj.optString("email") != "null") prn.escribirTextoSinSalto("Correo: " + sj.optString("email"))
+
+
+
+            }
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("Factura Electrónica Nº:")
+            prn.escribirTextoSinSalto(js.optString("number"))
+            prn.agregarSalto()
+            if (sj != null) {
+                val env = when (sj.optString("environment")) {
+
+                    "1" -> "Producción"
+                    else ->  "Pruebas"
+                }
+                prn.escribirTextoSinSalto("Ambiente: " + env)
+                prn.escribirTextoSinSalto("Emision: " + "Normal")
+            }
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("Clave de Acceso/Nº de Autorización:")
+            prn.escribirTextoSinSalto(js.optString("access_key"))
+
             prn.agregarSalto()
             prn.dobleAltoOff()
             prn.setFontA()
             prn.negritaOff()
-            prn.agregarTexto("Ambiente: " + js.optString("tipoAmbienteOv"))
+
             prn.agregarSalto()
-            prn.escribirTextoSinSalto(js.optString("razonSociallEm"))
+
             prn.agregarSalto()
-            if (js.optString("nombreComercialEm") != "null") {
-                prn.escribirTextoSinSalto(js.optString("nombreComercialEm"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("RUC: " + js.optString("rucEm"))
+
+
             prn.agregarSalto()
-            if (js.optBoolean("obligadoLlevarContabilidadEm")) prn.agregarTexto("Obligado a llevar Contabilidad")
-            if (js.optBoolean("regimenMicroEmpresa0v")) prn.agregarTexto("Contribuyente Régimen RIMPE")
-            if (js.optBoolean("agenteRetencionOv")) prn.agregarTexto(
-                "Agente de Retención " + "Nº de Resolución: " + js.optString(
-                    "numeroResolucionOv"
-                )
-            )
+
             prn.setFontB()
-            prn.agregarTexto("Dirección: " + js.optString("direccionEm"))
-            if (js.optString("direccionSucursalEm") != "S/N") prn.agregarTexto(
-                "Sucursal: " + js.optString(
-                    "direccionSucursalEm"
-                )
-            )
-            if (js.optString("telefonoEm") != "null") {
-                prn.agregarTexto("Teléfono: " + js.optString("telefonoEm"))
-            }
-            if (js.optString("correoEm") != "null") prn.agregarTexto("Correo: " + js.optString("correoEm"))
+
             prn.agregarSalto()
             prn.setFontB()
             prn.alineadoIzquierda()
-            if (programa == "RESTAURANTES") prn.LineasIgualTexto(" PEDIDO " + js.optString("numPedidoRest") + " ")
             prn.escribirTextoSinSalto("Fecha: ")
-            prn.escribirTextoSinSalto(js.optString("fechaEmisionOv"))
+            prn.escribirTextoSinSalto(js.optString("date"))
             prn.agregarSalto()
-            if (js.has("salonRest")) {
-                if (js.optString("salonRest") != "null") prn.agregarTexto("Zona: " + js.optString("salonRest"))
-            }
-            if (js.has("numMesaRest")) {
-                if (js.optString("numMesaRest") != "null") prn.agregarTexto(
-                    "Mesa: " + js.optString(
-                        "numMesaRest"
-                    )
-                )
-            }
-            prn.escribirTextoSinSalto("Cliente: ")
-            if (js.optString("tipoIdentificacionCl") == "RUC") {
-                var nombreComercial = ""
-                if (js.optString("apellidosCl") != "null") {
-                    nombreComercial = "(" + js.optString("apellidosCl") + ")"
-                }
-                prn.agregarCaracteres(caracteres - 9, js.optString("nombresCl") + nombreComercial)
-            } else {
-                prn.agregarCaracteres(
-                    caracteres - 9,
-                    js.optString("apellidosCl") + " " + js.optString("nombresCl")
-                )
-            }
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto(js.optString("tipoIdentificacionCl") + ": ")
-            prn.escribirTextoSinSalto(js.optString("identificacionCl"))
-            prn.agregarSalto()
-            if (js.optString("telefonoCl") != "null") {
-                prn.escribirTextoSinSalto("Teléfono: ")
-                prn.escribirTextoSinSalto(js.optString("telefonoCl"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("Dirección: ")
-            prn.escribirTextoSinSalto(js.optString("direccionFacturacionCl"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Cant Descripción")
-            prn.agregarCaracteres(caracteres - 26, "")
-            prn.escribirTextoSinSalto("P.U. Total")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            detalles = js.getJSONArray("listaDetalleOrdenVenta")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.agregarTexto(
-                    prn.lineaVentaDoble(
-                        jo.optString("cantidadDet"),
-                        jo.optString("descripcionDet"),
-                        jo.optString("precioUnitarioDet"),
-                        jo.optString("precioTotalImpuestoDet"),
-                        jo.getJSONArray("detalleImpuesto"),
-                        caracteres
-                    )
-                )
-            }
-            prn.LineasIgual()
-            prn.alineadoDerecha()
-            prn.setFontA()
-            if (js.getDouble("descuentoOv") > 0) {
-                prn.escribirTextoSinSalto("Descuentos:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("descuentoOv")))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("Subtotal:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("subTotalOv")))
-            prn.agregarSalto()
-            detalles = js.getJSONArray("listaImpuesto")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.escribirTextoSinSalto("Subtotal " + jo.optString("porcentajeIm") + "%:")
-                prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("subTotalIm")))
-                prn.agregarSalto()
-            }
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                if (jo.getDouble("porcentajeIm") > 0) {
-                    prn.escribirTextoSinSalto(jo.optString("nombreIm") + " " + jo.optString("porcentajeIm") + "%:")
-                    prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("valorIm")))
-                    prn.agregarSalto()
-                }
-            }
-            //agregar total
-            prn.escribirTextoSinSalto("Total:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("totalPagarOv")))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Entrega:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("totalEntregaOv")))
-            prn.agregarSalto()
-            if (js.getDouble("totalDiferenciaOv") < 0) {
-                prn.escribirTextoSinSalto("Deuda:")
-            } else {
-                prn.escribirTextoSinSalto("Cambio:")
-            }
-            prn.agregarCaracteresDerecha(
-                10,
-                df.format(js.getDouble("totalDiferenciaOv")).replace("-", "")
-            )
-            prn.agregarSalto()
-            prn.agregarSalto()
-            prn.setFontB()
-            if (js.has("listaFormaPago")) {
-                if (js["listaFormaPago"].toString() !== "null") {
-                    detalles = js.getJSONArray("listaFormaPago")
-                    for (j in 0 until detalles.length()) {
-                        jo = detalles.getJSONObject(j)
-                        prn.alineadoCentro()
-                        prn.escribirTextoSinSalto(
-                            "Pago en " + jo.optString("nombreFp") + "= " + df.format(
-                                jo.getDouble("valorFp")
-                            )
-                        )
-                        prn.agregarSalto()
-                        prn.alineadoIzquierda()
-                    }
-                }
-            }
-            if (js.has("observacionOv")) {
-                if (js["observacionOv"].toString() !== "null") {
-                    prn.agregarTexto("Observaciones:")
-                    prn.agregarTexto(js.optString("observacionOv"))
-                }
-            }
-            if (js.has("observacionRest")) {
-                if (js["observacionRest"].toString() !== "null") {
-                    prn.agregarTexto("Observaciones:")
-                    prn.agregarTexto(js.optString("observacionRest"))
-                }
-            }
-            prn.escribirTextoSinSalto("Su comprobante electrónico ha sido generado correctamente")
-            if (js.has("correoCl")) {
-                if (js.optString("correoCl") != "null") {
-                    prn.escribirTextoSinSalto(" y ha sido enviado al correo: " + js.optString("correoCl"))
-                }
-            }
-            prn.escribirTextoSinSalto(". Recuerde que también puede consultar su comprobante en el portal del SRI https://srienlinea.sri.gob.ec/ dentro de las próximas 24 horas con la siguiente clave de acceso:")
-            prn.agregarSalto()
-            prn.agregarSalto()
-            prn.alineadoCentro()
-            prn.setFontA()
-            prn.escribirTextoSinSalto(js.optString("claveAccesoOv"))
-            prn.agregarSalto()
-            prn.feedFinal()
-            prn.cortar()
-            if (js.has("tipoVentaRest")) {
-                if (js.optString("tipoVentaRest") == "PEDIDO TELEFÓNICO") {
-                    prn.lineHeight2()
-                    prn.setFontA()
-                    prn.alineadoCentro()
-                    prn.dobleAltoOn()
-                    //prn.lineHeight();
-                    prn.agregarTexto("Factura Electrónica Nº:")
-                    prn.escribirTextoSinSalto(js.optString("numeroDocumentoOv"))
-                    prn.agregarSalto()
-                    prn.dobleAltoOff()
-                    prn.negritaOff()
-                    prn.alineadoIzquierda()
-                    prn.setFontB()
-                    if (programa == "RESTAURANTES") prn.LineasIgualTexto(" PEDIDO " + js.optString("numPedidoRest") + " ")
-                    prn.setFontA()
-                    prn.escribirTextoSinSalto("Fecha: ")
-                    prn.escribirTextoSinSalto(js.optString("fechaEmisionOv"))
-                    prn.agregarSalto()
-                    if (js.has("salonRest")) {
-                        if (js.optString("salonRest") != "null") prn.agregarTexto(
-                            "Zona: " + js.optString(
-                                "salonRest"
-                            )
-                        )
-                    }
-                    if (js.has("numMesaRest")) {
-                        if (js.optString("numMesaRest") != "null") prn.agregarTexto(
-                            "Mesa: " + js.optString(
-                                "numMesaRest"
-                            )
-                        )
-                    }
-                    prn.escribirTextoSinSalto("FACTURADO A: ")
-                    if (js.optString("tipoIdentificacionCl") == "RUC") {
-                        var nombreComercial = ""
-                        if (js.optString("apellidosCl") != "null") {
-                            nombreComercial = "(" + js.optString("apellidosCl") + ")"
-                        }
-                        prn.agregarCaracteres(
-                            caracteres - 9,
-                            js.optString("nombresCl") + nombreComercial
-                        )
-                    } else {
-                        prn.agregarCaracteres(
-                            caracteres - 9,
-                            js.optString("apellidosCl") + " " + js.optString("nombresCl")
-                        )
-                    }
-                    prn.agregarSalto()
-                    prn.escribirTextoSinSalto(js.optString("tipoIdentificacionCl") + ": ")
-                    prn.escribirTextoSinSalto(js.optString("identificacionCl"))
-                    prn.agregarSalto()
-                    prn.escribirTextoSinSalto("Teléfono: ")
-                    prn.escribirTextoSinSalto(js.optString("telefonoCl"))
-                    prn.agregarSalto()
-                    prn.escribirTextoSinSalto("Dirección: ")
-                    prn.escribirTextoSinSalto(js.optString("direccionFacturacionCl"))
-                    prn.agregarSalto()
-                    prn.alineadoCentro()
-                    prn.agregarSalto()
-                    prn.agregarTexto("=====================")
-                    prn.dobleAltoOn()
-                    prn.agregarTexto("OBSERVACIONES DE ENTREGA")
-                    prn.dobleAltoOff()
-                    prn.alineadoIzquierda()
-                    prn.agregarSalto()
-                    prn.escribirTextoSinSalto(js.optString("observacionRest"))
-                    prn.agregarSalto()
-                    prn.negritaOn()
-                    prn.agregarTexto(js.optString("tipoEntregaRest"))
-                    prn.negritaOff()
-                    prn.feedFinal()
-                    prn.cortar()
-                }
-            }
+
+
+
+
             enviarImprimir(prn.getTrabajo())
         } catch (e: JSONException) {
             e.printStackTrace()

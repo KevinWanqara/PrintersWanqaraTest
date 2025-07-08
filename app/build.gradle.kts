@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.dagger.hilt.android") version "2.44"
     kotlin("kapt")
 
 }
@@ -94,6 +95,8 @@ dependencies {
     // Hilt
     implementation("com.google.dagger:hilt-android:$hilt_version")
     kapt("com.google.dagger:hilt-android-compiler:$hilt_version")
+
+
     implementation("androidx.compose.animation:animation")
 
     //GIF

@@ -101,7 +101,7 @@ data class IvaRate(
 
 data class PaymentMethod(
     val code: String,
-    val default: Int,
+    val default: Boolean,
     val display_name: String,
     val end_date: String?,
     val id: String,
@@ -137,8 +137,8 @@ data class Subsidiary(
     val address: String,
     val phone: String,
     val active: Boolean,
-    val dispatch_inventory: Int,
-    val differentiated_billing: Int,
+    val dispatch_inventory: Boolean,
+    val differentiated_billing: Boolean,
     val city_id: String
 )
 
@@ -149,7 +149,7 @@ data class Warehouse(
     val address: String,
     val description: String,
     val active: Boolean,
-    val inventory: Int,
+    val inventory: Boolean,
     val latitude: Double?,
     val longitude: Double?,
     val is_main: Boolean
@@ -176,8 +176,8 @@ data class Customer(
     val regimen_type: String?,
     val quota: String,
     val credit: String,
-    val related: Int,
-    val accounting_force: Int,
+    val related: Boolean,
+    val accounting_force: Boolean,
     val tax_support: String?,
     val country_id: String?,
     val seller_id: String?,
@@ -190,7 +190,7 @@ data class IdentityCode(
     val id: String,
     val code: String,
     val name: String,
-    val show: Int,
+    val show: Boolean,
     val identity_types: List<IdentityType>
 )
 
@@ -236,13 +236,13 @@ data class EDocument(
     val path: String,
     val code: String,
     val messages: String,
-    val status: Int,
+    val status: Boolean,
     val environment: Int,
     val edocumentable_id: String,
     val edocumentable_type: String,
     val authorized: Boolean,
     val send: Boolean,
-    val signed: Int,
+    val signed: Boolean,
     val created_at: String,
     val updated_at: String
 )

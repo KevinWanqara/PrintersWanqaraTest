@@ -10,6 +10,7 @@ import retrofit2.http.Query
 interface SalesService {
     @GET("billing/sales/{id}")
     suspend fun getSalesById(
+
         @Path("id") id: String,
         @Query("include") include: String? = null
     ): SalesApiResponse

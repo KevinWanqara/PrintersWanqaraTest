@@ -22,7 +22,8 @@ data class LoginResponse(
 
 data class UserData(
     val token: String,
-    val user: UserDetails
+    val user: UserDetails,
+    val setting : Setting
 )
 data class UserDetails(
     val id: String,
@@ -31,6 +32,80 @@ data class UserDetails(
 
 )
 
+data class Setting(
+    val accounting_force: Boolean,
+    val active: Boolean,
+    val address: String,
+    val artisan_resolution: String,
+    val business_name: String,
+    val checkouts: Int,
+    val currency: String,
+    val decimals: Int,
+    val default_payment_method_id: String,
+    val email: String,
+    val emission_type: String,
+    val environment: String,
+
+    val expiration_date: String,
+    val goods_transportation: Boolean,
+    val has_digital_scales: Boolean,
+    val has_product_rates: Boolean,
+    val has_subsidy_products: Boolean,
+    val has_various_businesses: Boolean,
+    val identity_code_id: String,
+    val integer_weight: Int,
+    val moves_inventory: Boolean,
+    val phone: String,
+    val printers : Printers,
+    val receipts: Int,
+    val regime: String,
+    val ruc: String,
+    val sell_without_inventory: Boolean,
+
+
+    val special_taxpayer: String,
+    val subscriptions_type: String,
+    val subsidiaries: Int,
+    val use_edocument: Boolean,
+    val users: Int,
+    val uses_banners: Boolean,
+    val uses_color_size_product: Boolean,
+    val uses_detailed_payment: Boolean,
+    val uses_kds: Boolean,
+    val uses_lote_product: Boolean,
+    val uses_payment_accounts: Boolean,
+    val uses_restaurant: Boolean,
+    val uses_serie_product: Boolean,
+    val warehouses: Int,
+    val weight: Int,
+    val withholding_resolution: String,
+
+
+
+
+)
+
+data class Printers(
+    val invoice : PrinterDetails,
+    val order : PrinterDetails,
+    val preticket : PrinterDetails,
+    val receipt : PrinterDetails,
+
+
+)
+
+data class PrinterDetails(
+    val copies: Int ? = null,
+    val font : String ? = null,
+    val header : Boolean ? = null,
+    val line_breaks : Int ? = null,
+    val line_spacing: Boolean ? = null,
+    val logo : Boolean ? = null,
+    val observation : Boolean ? = null,
+    val taxes : Boolean ? = null,
+    val user : Boolean ? = null,
+
+)
 data class ResetPasswordRequest(val email: String)
 data class ResetPasswordResponse(val message: String)
 
@@ -77,6 +152,7 @@ object ApiClient {
                 if (token != null) {
                     println("Adding Authorization header with token: $token") // Debug log to confirm header addition
                     requestBuilder.addHeader("Authorization", "Bearer $token") // Add Authorization header if token is not null
+
                 }
 
                 chain.proceed(requestBuilder.build())
@@ -87,12 +163,35 @@ object ApiClient {
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()
+        println("Creating ApiService with base URL: $BASE_URL") // Debug log to confirm base URL
+        println("Using tenant: $withTenant") // Debug log to confirm tenant usage
+
         return retrofit.create(ApiService::class.java)
     }
 
     fun createSalesService(context: Context): SalesService {
+
         val client = OkHttpClient.Builder()
-            // ...add interceptors as needed...
+
+            .addInterceptor { chain ->
+                val original: Request = chain.request()
+                val ruc = AppStorage.getRuc(context)
+                val token = AppStorage.getToken(context)
+                println("RUC from storage: $ruc")
+                val requestBuilder = original.newBuilder()
+                    .addHeader("Accept", "application/json")
+                if (ruc != null) {
+                    println("Adding X-tenant header with RUC: $ruc")
+                    requestBuilder.addHeader("X-tenant", ruc.trim())
+                }
+                if (token != null) {
+                    println("Adding Authorization header with token: $token")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    println("No token found, Authorization header not added")
+                }
+                chain.proceed(requestBuilder.build())
+            }
             .build()
         val retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)

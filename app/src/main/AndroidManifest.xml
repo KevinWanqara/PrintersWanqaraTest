@@ -28,6 +28,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.screens.BackgroundActivity"
+            android:exported="true"
+            android:theme="@style/Theme.PrintersWanqaraTest">
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="wanqaraprintermobile" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

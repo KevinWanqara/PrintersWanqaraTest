@@ -78,9 +78,9 @@ fun AddPrinterScreen() {
     var printerName by remember { mutableStateOf("") }
     var bluetoothDevice by remember { mutableStateOf("") }
     var wifiIp by remember { mutableStateOf("") }
-    var wifiPort by remember { mutableStateOf(9100) }
-    var characters by remember { mutableStateOf(32) }
-    var copyNumber by remember { mutableStateOf(1) }
+    var wifiPort by remember { mutableStateOf(0) }
+    var characters by remember { mutableStateOf(0) }
+    var copyNumber by remember { mutableStateOf(0) }
     var showBluetoothPicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -277,8 +277,8 @@ fun AddPrinterScreen() {
                         )
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
-                            value = wifiPort.toString(),
-                            onValueChange = { wifiPort = it.toIntOrNull() ?: 9100 },
+                            value = if (wifiPort == 0) "" else wifiPort.toString(),
+                            onValueChange = { wifiPort = it.toIntOrNull() ?: 0 },
                             label = { Text("Port") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
@@ -292,12 +292,13 @@ fun AddPrinterScreen() {
                 ) {
 
                     Button(
-                        onClick = { step = 2 }, enabled = when (selectedMode) {
+                        onClick = { step = 2 },
+                        enabled = when (selectedMode) {
                             PrinterType.USB -> printerName.isNotBlank()
-                            PrinterType.BLUETOOTH -> bluetoothDevice.isNotBlank()
+                            PrinterType.BLUETOOTH -> printerName.isNotBlank() && bluetoothDevice.isNotBlank()
                             PrinterType.WIFI -> printerName.isNotBlank() && wifiIp.isNotBlank() && wifiPort > 0
                         },
-                        colors =  ButtonDefaults.buttonColors(containerColor = Primary),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
                     ) {
                         Text("Siguiente")
                     }
@@ -325,8 +326,8 @@ fun AddPrinterScreen() {
                     }
 
                     OutlinedTextField(
-                        value = characters.toString(),
-                        onValueChange = { characters = it.toIntOrNull() ?: 32 },
+                        value = if (characters == 0) "" else characters.toString(),
+                        onValueChange = { characters = it.toIntOrNull() ?: 0 },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Caracteres") }
@@ -338,7 +339,11 @@ fun AddPrinterScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         OutlinedButton(onClick = { step = 1 },   border = BorderStroke(2.dp, Primary),) { Text("Atras") }
-                        Button(onClick = { step = 3 },colors =   ButtonDefaults.buttonColors(containerColor = Primary)) {  Text("Siguiente") }
+                        Button(
+                            onClick = { step = 3 },
+                            enabled = characters > 0,
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) { Text("Siguiente") }
                     }
                 }
             }
@@ -347,8 +352,8 @@ fun AddPrinterScreen() {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Text("Numero de copias:")
                     OutlinedTextField(
-                        value = copyNumber.toString(),
-                        onValueChange = { copyNumber = it.toIntOrNull() ?: 1 },
+                        value = if (copyNumber == 0) "" else copyNumber.toString(),
+                        onValueChange = { copyNumber = it.toIntOrNull() ?: 0 },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -357,7 +362,11 @@ fun AddPrinterScreen() {
                         OutlinedButton(onClick = { step = 2 },
                             border = BorderStroke(2.dp, Primary),
                             ) { Text("Atras") }
-                        Button(onClick = { step = 4 },colors =   ButtonDefaults.buttonColors(containerColor = Primary)) { Text("Siguiente") }
+                        Button(
+                            onClick = { step = 4 },
+                            enabled = copyNumber > 0,
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) { Text("Siguiente") }
                     }
                 }
             }
@@ -371,12 +380,12 @@ fun AddPrinterScreen() {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             rowTypes.forEach { value ->
                                 val key = docTypeObj.findKeyByDocument(value) ?: value
-                                val isSelected = selectedDocTypes.value.contains(value)
+                                val isSelected = selectedDocTypes.value.contains(key)
                                 Card(onClick = {
                                     selectedDocTypes.value = if (isSelected) {
-                                        selectedDocTypes.value - value
+                                        selectedDocTypes.value - key
                                     } else {
-                                        selectedDocTypes.value + value
+                                        selectedDocTypes.value + key
                                     }
                                 },
                                     modifier = Modifier
@@ -421,17 +430,24 @@ fun AddPrinterScreen() {
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
-                // Show summary
+                Spacer(Modifier.height(16.dp))
+                // Show selected printer type icon and name
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    val icon = when (selectedMode) {
+                        PrinterType.USB -> Icons.Default.Usb
+                        PrinterType.WIFI -> Icons.Default.Wifi
+                        PrinterType.BLUETOOTH -> Icons.Default.Bluetooth
+                    }
+                    Icon(icon, contentDescription = selectedMode.type, tint = Primary, modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = selectedMode.type,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Primary
+                    )
+                }
                 Text(
-                    "Type: ${selectedMode.type}",
-                    modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    "Name: $printerName",
+                    "Nombre: $printerName",
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
@@ -439,7 +455,7 @@ fun AddPrinterScreen() {
                     overflow = TextOverflow.Ellipsis
                 )
                 if (selectedMode == PrinterType.BLUETOOTH) Text(
-                    "Device: $bluetoothDevice",
+                    "Dispositivo: $bluetoothDevice",
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
@@ -456,7 +472,7 @@ fun AddPrinterScreen() {
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        "Port: $wifiPort",
+                        "Puerto: $wifiPort",
                         modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
@@ -465,7 +481,7 @@ fun AddPrinterScreen() {
                     )
                 }
                 Text(
-                    "Characters: $characters",
+                    "Caracteres por línea: $characters",
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
@@ -473,25 +489,37 @@ fun AddPrinterScreen() {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "Copies: $copyNumber",
+                    "Copias: $copyNumber",
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
+                Spacer(Modifier.height(12.dp))
+                // Show selected document types as small cards
                 val docTypeObj = documentType()
                 val selectedDocNames = selectedDocTypes.value.mapNotNull { docTypeObj.findDocumentByKey(it) }
-                Text(
-                    "Document: ${selectedDocNames.joinToString(", ")}",
-                    modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    OutlinedButton(onClick = { step = 4 }, border = BorderStroke(2.dp, Primary)) { Text("Atras") }
+                Text("Documentos seleccionados:", style = MaterialTheme.typography.bodyMedium)
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    selectedDocNames.forEach { docName ->
+                        Card(
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.15f)),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Box(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+                                Text(docName, style = MaterialTheme.typography.bodySmall, color = Primary)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    OutlinedButton(onClick = { step = 4 }, border = BorderStroke(2.dp, Primary)) { Text("Regresar") }
                     Button(onClick = {
                         coroutineScope.launch {
                             val docTypeObj = documentType()
@@ -500,18 +528,17 @@ fun AddPrinterScreen() {
                             println(
                                 "Saving printer: $printerName, Mode: ${selectedMode.type}, Characters: $characters, Copies: $copyNumber, Docs: ${selectedDocTypes.value.joinToString(", ")}"
                             )
-                            for (docKey in selectedDocTypes.value) {
+
+                            for (docKey in selectedDocTypes.value){
                                 println(
                                     "Saving printer for document type: $docKey"
                                 )
                                 val success = when(selectedMode) {
                                     PrinterType.USB -> {
                                         saveUsbPrinter(context,printerName, characters, copyNumber, docKey)
-                                        true
                                     }
                                     PrinterType.BLUETOOTH -> {
                                         saveBluetoothPrinter(context, printerName, bluetoothDevice, wifiPort,docKey,copyNumber,characters)
-                                        true
                                     }
                                     PrinterType.WIFI -> {
                                         saveWifiPrinter(context, printerName, wifiIp, wifiPort,docKey,copyNumber,characters)
@@ -519,8 +546,11 @@ fun AddPrinterScreen() {
                                 }
                                 if (!success) allSuccess = false
                             }
+
+
                             if (allSuccess) {
                                 snackbarHostState.showSnackbar("Printer saved successfully for all document types")
+                                // Navigate to home screen after saving
                                 step = 1
                                 printerName = ""
                                 bluetoothDevice = ""

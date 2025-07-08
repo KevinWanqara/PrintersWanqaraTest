@@ -147,7 +147,12 @@ class MainActivity : ComponentActivity() {
                                                 )
                                                 DropdownMenuItem(
                                                     text = { Text("Logout") },
-                                                    onClick = { profileMenuExpanded = false /* TODO: Handle logout */ }
+                                                    onClick = {
+                                                        profileMenuExpanded = false
+                                                        AppStorage.clearSession(context)
+                                                        isLoggedIn = false
+                                                        isDomainValidated = false
+                                                    }
                                                 )
                                             }
                                         }

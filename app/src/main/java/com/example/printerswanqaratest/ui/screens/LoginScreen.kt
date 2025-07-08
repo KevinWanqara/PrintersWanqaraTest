@@ -174,6 +174,8 @@ fun LoginScreen(
                                 println("Login successful, token: ${response.data.token}")
                                 onLoginSuccess(response.data.token)
                                 AppStorage.saveToken(context, response.data.token)
+                                AppStorage.saveSettings(context,response.data.setting)
+
 
                             } catch (e: Exception) {
                                 errorMessage = "Login failed: ${e.localizedMessage}"
