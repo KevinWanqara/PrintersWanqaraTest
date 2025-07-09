@@ -50,7 +50,7 @@ class Discrimination(
         }
     }
 
-    operator fun invoke(commands: Array<String>): Boolean {
+    suspend operator fun invoke(commands: Array<String>): Boolean {
         var jsonObject: JSONObject?
         var errorCount = 0
         var errorCommand: Array<String> = arrayOf()
@@ -120,12 +120,14 @@ class Discrimination(
                     }
                     "IMPRESION_RECIBO" -> {
                         android.util.Log.d("Discrimination", "Sending imprimirRecibo command with cleanCommand: $cleanCommand")
-                        printerBuilder!!.imprimirRecibo(
-                            jsonObject,
-                            printer!!.copyNumber,
-                            printer!!.charactersNumber,
-                            "COMERCIOS" // or use parts.getOrNull(2) if needed
-                        )
+                        printer?.let {
+                            printerBuilder!!.imprimirRecibo(
+                                jsonObject,
+                                settingJson,
+                                it.copyNumber,
+                                it.charactersNumber,
+                            )
+                        }
                     }
                     "IMPRESION_PRE_TICKET" -> {
                         android.util.Log.d("Discrimination", "Sending imprimirPreticket command with cleanCommand: $cleanCommand")

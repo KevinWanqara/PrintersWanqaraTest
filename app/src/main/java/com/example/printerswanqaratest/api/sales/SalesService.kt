@@ -12,7 +12,7 @@ interface SalesService {
     suspend fun getSalesById(
 
         @Path("id") id: String,
-        @Query("include") include: String? = null
+        @Query("include") include: String? = "image"
     ): SalesApiResponse
 }
 

@@ -120,7 +120,7 @@ data class RucData(
     val name: String
 )
 interface ApiService {
-    @POST("general/login")
+    @POST("apps/printers/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
     @POST("general/forgot-password")

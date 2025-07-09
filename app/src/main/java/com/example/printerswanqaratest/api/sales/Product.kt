@@ -27,7 +27,9 @@ data class Product(
     val warehouse_inventory: WarehouseInventory,
     val latest_inventory_ledger: InventoryLedger,
     val full_price: Double? = null,
-    val production_cost: Double? = null
+    val production_cost: Double? = null,
+    val name : String,
+    val price : Double,
 )
 
 data class ProductType(

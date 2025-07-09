@@ -78,7 +78,7 @@ class EscposCoffee : PrinterLibraryRepository {
         try {
             this.escPos.write(message)
 //            this.escPos.write("\u001B" + "\u0042" + "\u0005" + "\u0002")
-            this.escPos.close()
+            //this.escPos.close()
         } catch (e: Exception) {
             println(e)
         }
@@ -259,13 +259,30 @@ class EscposCoffee : PrinterLibraryRepository {
     private suspend fun printImageFromUrl(escpos: EscPos, imageUrl: String) {
         try {
             val inputStream = URL(imageUrl).openStream()
-            val image: Bitmap = BitmapFactory.decodeStream(inputStream)
+            var image: Bitmap = BitmapFactory.decodeStream(inputStream)
+            val maxWidth = 150
+
+// Crop to 1:1 aspect ratio (centered square)
+            val size = minOf(image.width, image.height)
+            val xOffset = (image.width - size) / 2
+            val yOffset = (image.height - size) / 2
+            image = Bitmap.createBitmap(image, xOffset, yOffset, size, size)
+
+// Resize to maxWidth x maxWidth (cover)
+            if (size != maxWidth) {
+                image = Bitmap.createScaledBitmap(image, maxWidth, maxWidth, true)
+            }
+
             val algorithm: Bitonal = BitonalOrderedDither()
             val imageWrapper = RasterBitImageWrapper()
             imageWrapper.setJustification(EscPosConst.Justification.Center)
             val escposImage = EscPosImage(BitmapCoffeeImage(image), algorithm)
             escpos.write(imageWrapper, escposImage)
             escpos.feed(2)
+
+// Add a short delay to allow the printer to process the image
+            Thread.sleep(300)
+
         } catch (e: Exception) {
             println(e)
         }

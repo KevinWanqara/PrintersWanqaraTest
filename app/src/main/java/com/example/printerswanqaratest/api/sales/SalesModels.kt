@@ -1,6 +1,7 @@
 package com.example.printerswanqaratest.api.sales
 
-import com.example.printerswanqaratest.api.UserData
+
+import com.example.printerswanqaratest.api.UserDetails
 
 // Main API response for a sales request
 data class SalesApiResponse(
@@ -25,7 +26,7 @@ data class Sales(
     val checkout_id: String,
     val warehouse_id: String,
     val user_id: String,
-    val user: UserData?,
+    val user: UserDetails?,
     val sequential: String,
     val access_key: String,
     val number: String,
@@ -53,7 +54,10 @@ data class Sales(
     val label: String?,
     val description: String?,
     val complete: Boolean?,
+    val change_amount : Double?,
     val inventory_records: List<SaleInventoryRecord>?
+
+
 )
 
 data class SaleInventoryRecord(
@@ -139,7 +143,13 @@ data class Subsidiary(
     val active: Boolean,
     val dispatch_inventory: Boolean,
     val differentiated_billing: Boolean,
-    val city_id: String
+    val city_id: String,
+    val image : SubsidiaryImage,
+)
+
+data class SubsidiaryImage(
+    val full_path: String,
+
 )
 
 data class Warehouse(

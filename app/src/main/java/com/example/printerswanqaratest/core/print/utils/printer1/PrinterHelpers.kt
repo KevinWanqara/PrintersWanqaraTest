@@ -1,11 +1,18 @@
 package com.example.printerswanqaratest.core.print.utils.printer1
 
+import android.util.Log
+import com.example.printerswanqaratest.core.print.EscposCoffee
+import com.example.printerswanqaratest.core.print.messageBuilder.MediaBuilder
+import com.example.printerswanqaratest.core.printType.PrinterType
+import com.github.anastaciocintra.escpos.Style
+import com.github.anastaciocintra.output.TcpIpOutputStream
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.math.BigDecimal
 import java.math.RoundingMode
+
 
 class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
 
@@ -19,12 +26,7 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
     }
 
     fun getTrabajo(): String {
-        var resutado = ""
-        trabajo = narmalizarString(trabajo)
-        for (i in 0 until impresoraCopias) {
-            resutado += trabajo
-        }
-        return resutado
+        return narmalizarString(trabajo)
     }
 
     // METODOS
@@ -89,22 +91,40 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
     }
 
     fun setFontA() {
-        escribirTextoSinSalto("\u001B" + "\u004D" + "\u0001")
+        println("Setting font A")
+        dobleAnchoOff()
+        escribirTextoSinSalto("\u001B" + "\u004D" + "\u0000")
     }
 
     fun setFontB() {
+        println("Setting font B")
+        dobleAnchoOff()
+        escribirTextoSinSalto("\u001B" + "\u004D" + "\u0001")
+    }
+    fun setFontAA(){
+        println("Setting font AA")
+        dobleAnchoOn()
+        escribirTextoSinSalto("\u001B" + "\u004D" + "\u0000")
+    }
+
+    fun setFontBB() {
+        println("Setting font BB")
+        dobleAnchoOn()
         escribirTextoSinSalto("\u001B" + "\u004D" + "\u0001")
     }
 
     fun setFontC() {
+        println("Setting font C")
         escribirTextoSinSalto("\u001B" + "\u004D" + "\u0002")
     }
 
     fun setFontD() {
+        println("Setting font D")
         escribirTextoSinSalto("\u001B" + "\u004D" + "\u0003")
     }
 
     fun setFontE() {
+        println("Setting font E")
         escribirTextoSinSalto("\u001B" + "\u004D" + "\u0004")
     }
 
@@ -216,9 +236,11 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
     }
 
     fun LineasGuion() {
+        val maxChars = 64
+        val count = if (impresoraCaracteres > maxChars) maxChars else impresoraCaracteres
         var lineasGuion = ""
-        for (i in 0 until impresoraCaracteres) {
-            lineasGuion = "$lineasGuion-"
+        for (i in 0 until count) {
+            lineasGuion += "-"
         }
         agregarTexto(lineasGuion)
     }
@@ -232,8 +254,11 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
     }
 
     fun LineasIgual() {
+        val maxChars = 64
+        val count = if (impresoraCaracteres > maxChars) maxChars else impresoraCaracteres
+
         var lineasAsterisco = ""
-        for (i in 0 until impresoraCaracteres) {
+        for (i in 0 until count) {
             lineasAsterisco = "$lineasAsterisco="
         }
         agregarTexto(lineasAsterisco)
@@ -552,6 +577,56 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         return _cantidad + _detalle + _precioU + _total + _impuesto
     }
 
+
+
+    @Throws(JSONException::class)
+    fun lineaDetails(
+        cantidad: String?,
+        detalle: String?,
+        precioU: String?,
+        Total: String?,
+        caracteresDisponibles: Int? = 0
+    ): String {
+        val tag = "PrinterHelpers"
+
+        // Validate and log nulls
+        if (cantidad.isNullOrBlank()) Log.e(tag, "cantidad is null or blank")
+        if (detalle.isNullOrBlank()) Log.e(tag, "detalle is null or blank")
+        if (precioU.isNullOrBlank()) Log.e(tag, "precioU is null or blank")
+        if (Total.isNullOrBlank()) Log.e(tag, "Total is null or blank")
+        if (caracteresDisponibles == null) Log.e(tag, "caracteresDisponibles is null")
+
+        // Safe values
+        val safeCantidad = cantidad?.takeIf { it.isNotBlank() } ?: "0"
+        val safeDetalle = detalle ?: ""
+        val safePrecioU = precioU?.takeIf { it.isNotBlank() } ?: "0"
+        val safeTotal = Total?.takeIf { it.isNotBlank() } ?: "0"
+        val safeCaracteres = caracteresDisponibles ?: 0
+
+        //Cantidad
+        val _cantidad = "${BigDecimal(safeCantidad).setScale(2, RoundingMode.HALF_UP)} "
+
+        //Precio Unitario
+        val precioUFormatted = BigDecimal(safePrecioU).setScale(2, RoundingMode.HALF_UP).toString()
+        val _precioU = " ".repeat((5 - precioUFormatted.length).coerceAtLeast(0)) + precioUFormatted + " "
+
+        //Precio Total
+        val totalFormatted = BigDecimal(safeTotal).setScale(2, RoundingMode.HALF_UP).toString()
+        val _total = " ".repeat((5 - totalFormatted.length).coerceAtLeast(0)) + totalFormatted
+
+        //Caracteres disponibles para detalle
+        val caracteresDiponibles = (safeCaracteres - (_cantidad.length + _precioU.length + _total.length) - 1).coerceAtLeast(0)
+
+        //Descripcion
+        val _detalle = if (safeDetalle.length <= caracteresDiponibles) {
+            safeDetalle.padEnd(caracteresDiponibles, ' ') + " "
+        } else {
+            safeDetalle.take(caracteresDiponibles) + " "
+        }
+
+        return _cantidad + _detalle + _precioU + _total
+    }
+
     @Throws(IOException::class, JSONException::class, InterruptedException::class)
     fun lineaVentaDobleR(
         cantidad: String?,
@@ -802,4 +877,18 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         }
         return "$signo $_cantidad$_detalle"
     }
+
+
+
+     suspend fun logo(url: String, printerBuilder: PrinterBuilder) {
+         println("Printing logo from $url")
+        val mediaMap = mapOf("imgU" to listOf(url))
+        val mediaBuilder = com.example.printerswanqaratest.core.print.messageBuilder.MediaBuilder(mediaMap)
+        try {
+            printerBuilder.printMediaJob(mediaBuilder)
+        } catch (e: Exception) {
+            android.util.Log.e("PrinterHelpers", "Error printing logo from $url", e)
+        }
+    }
+
 }
