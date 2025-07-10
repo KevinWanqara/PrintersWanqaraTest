@@ -29,7 +29,7 @@ data class UserDetails(
     val id: String,
     val name: String,
     val email: String,
-
+    val full_image_path : String,
 )
 
 data class Setting(

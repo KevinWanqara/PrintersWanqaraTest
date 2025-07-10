@@ -6,7 +6,7 @@ import javax.inject.Inject
 
 class GetPrinter @Inject constructor(private val printerRepository: PrinterRepository) {
 
-    suspend operator fun invoke(id:Int): Printers {
+    suspend operator fun invoke(id:String): Printers {
         return printerRepository.findPrinterById(id).getPrinterModelFromPrinterEntity()
     }
     suspend fun getPrinterByDocument(document:String): Printers? {

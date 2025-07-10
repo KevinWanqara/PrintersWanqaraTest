@@ -54,34 +54,18 @@ class Discrimination(
         var jsonObject: JSONObject?
         var errorCount = 0
         var errorCommand: Array<String> = arrayOf()
-        for (i in commands.indices) {
-            val command = commands[i]
-            val cleanCommand = command.trim().removePrefix("//").removePrefix("wanqaraprintermobile://").trim()
-            // Defensive: Only split if there's a comma, else treat as a single part
-            val parts = if (cleanCommand.contains(",")) {
-                cleanCommand.split(",").map { it.trim() }
-            } else {
-                listOf(cleanCommand)
-            }
-            // Fix: If only one command and two are expected, try to join with the next
-            val documentType: String?
-            val saleId: String?
-            if (parts.size == 2) {
-                documentType = parts[0]
-                saleId = parts[1]
-            } else if (parts.size == 1 && i + 1 < commands.size) {
-                // Try to join with the next command
-                val nextCommand = commands[i + 1].trim().removePrefix("//").removePrefix("wanqaraprintermobile://").trim()
-                documentType = parts[0]
-                saleId = nextCommand
-                android.util.Log.d("Discrimination", "Detected split command, using documentType: $documentType, saleId: $saleId")
-            } else {
-                documentType = parts.getOrNull(0)
-                saleId = parts.getOrNull(1)
-            }
-            android.util.Log.d("Discrimination", "Parsed documentType: $documentType, saleId: $saleId")
-            if (documentType.isNullOrEmpty() || saleId.isNullOrEmpty()) {
-                android.util.Log.e("Discrimination", "Invalid command format: $command (parsed as: $cleanCommand)")
+        if (commands.isEmpty()) return false
+        // Parse main command, saleId, and additional commands
+        val mainCommand = commands[0].trim().removePrefix("//").removePrefix("wanqaraprintermobile://").trimStart('/')
+        val saleId = commands.getOrNull(1)?.trim()
+        val additionalCommands = if (commands.size > 2) commands.sliceArray(2 until commands.size).map { it.trimStart('/') } else emptyList()
+        val allCommands = mutableListOf<String>()
+        allCommands.add(mainCommand)
+        allCommands.addAll(additionalCommands)
+        for (command in allCommands) {
+            val documentType = command
+            if (documentType.isEmpty() || saleId.isNullOrEmpty()) {
+                android.util.Log.e("Discrimination", "Invalid command format: $command (documentType or saleId is empty)")
                 errorCount++
                 errorCommand = errorCommand.plus(command)
                 continue
@@ -107,8 +91,7 @@ class Discrimination(
             if (printerBuilder != null && jsonObject != null) {
                 when (documentType) {
                     "IMPRESION_FACTURA_ELECTRONICA" -> {
-                        android.util.Log.d("Discrimination", "Sending imprimirFacturaElectronica command with cleanCommand: $cleanCommand")
-                        android.util.Log.d("Discrimination", "Printer: ${printer?.copyNumber}, Characters: ${printer?.charactersNumber}")
+                        android.util.Log.d("Discrimination", "Sending imprimirFacturaElectronica command with documentType: $documentType")
                         printer?.let {
                             printerBuilder!!.imprimirFacturaElectronica(
                                 jsonObject,
@@ -119,7 +102,7 @@ class Discrimination(
                         }
                     }
                     "IMPRESION_RECIBO" -> {
-                        android.util.Log.d("Discrimination", "Sending imprimirRecibo command with cleanCommand: $cleanCommand")
+                        android.util.Log.d("Discrimination", "Sending imprimirRecibo command with documentType: $documentType")
                         printer?.let {
                             printerBuilder!!.imprimirRecibo(
                                 jsonObject,
@@ -130,22 +113,39 @@ class Discrimination(
                         }
                     }
                     "IMPRESION_PRE_TICKET" -> {
-                        android.util.Log.d("Discrimination", "Sending imprimirPreticket command with cleanCommand: $cleanCommand")
+                        android.util.Log.d("Discrimination", "Sending imprimirPreticket command with documentType: $documentType")
                         printerBuilder!!.imprimirPreticket(
                             jsonObject,
                             printer!!.copyNumber,
                             printer!!.charactersNumber
                         )
                     }
+                    "IMPRESION_COMANDA:COCINA", "IMPRESION_COMANDA:BARRA", "IMPRESION_COMANDA:OTROS" -> {
+                        android.util.Log.d("Discrimination", "Sending comanda command with documentType: $documentType")
+                        val comandaType = when (documentType) {
+                            "IMPRESION_COMANDA:COCINA" -> "A"
+                            "IMPRESION_COMANDA:BARRA" -> "B"
+                            "IMPRESION_COMANDA:OTROS" -> "C"
+                            else -> ""
+                        }
+                        printer?.let {
+                            printerBuilder!!.imprimirComandas(
+                                jsonObject,
+                                settingJson,
+                                it.copyNumber,
+                                it.charactersNumber,
+                                comandaType
+                            )
+                        }
+                    }
                     // Add more document types as needed
                     else -> {
-                        android.util.Log.e("Discrimination", "Unknown documentType: $documentType in cleanCommand: $cleanCommand")
+                        android.util.Log.e("Discrimination", "Unknown documentType: $documentType")
                         errorCount++
                         errorCommand = errorCommand.plus(command)
                     }
                 }
             } else {
-                android.util.Log.e("Discrimination", "printerBuilder or jsonObject is NULL for cleanCommand: $cleanCommand")
                 errorCount++
                 if (!errorCommand.contains(command)) errorCommand = errorCommand.plus(command)
             }

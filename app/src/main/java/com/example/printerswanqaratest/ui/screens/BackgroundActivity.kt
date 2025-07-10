@@ -21,6 +21,7 @@ import com.example.printerswanqaratest.R
 import com.example.printerswanqaratest.core.print.utils.printer1.Discrimination
 import com.example.printerswanqaratest.domain.services.GetAllPrinters
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.system.exitProcess
@@ -97,8 +98,8 @@ class BackgroundActivity : ComponentActivity() {
                 }
                 return false
             }
-            val commands = arrayOf(data)
-            Log.d("BackgroundActivity", "Parsed commands: ${commands.contentToString()}")
+            val commands = data.split(",")
+            Log.d("BackgroundActivity", "Parsed commands: ${commands}")
 
             try {
                 Log.d("BackgroundActivity", "Getting database instance...")
@@ -111,24 +112,30 @@ class BackgroundActivity : ComponentActivity() {
                 val printers = getAllPrinters.getAll()
                 Log.d("BackgroundActivity", "Fetched printers: ${printers.size} found")
                 m_ambiente = "wanqara.app"
-                Log.d("BackgroundActivity", "Calling Discrimination with sale.id: $saleId")
-                Log.d("BackgroundActivity", "Commands: ${commands.contentToString()}")
-                if (!commands.let {
-                        (saleId)?.let { it1 -> Discrimination(printers, this , it1) }?.let { it2 ->
-                            it2(
-                                commands
-                            )
-                        }
-                    }!!) {
-                    result = false
-                    withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        android.widget.Toast.makeText(this@BackgroundActivity, "Error printing sale", android.widget.Toast.LENGTH_SHORT).show()
+                val saleId = commands.getOrNull(1)
+                val commandList = mutableListOf<String>()
+                if (commands.isNotEmpty()) {
+                    // Remove all leading slashes from main command if present
+                    val mainCommand = commands[0].trimStart('/')
+                    commandList.add(mainCommand)
+                    if (commands.size > 2) {
+                        // Add all additional commands, trimming any leading slashes
+                        commandList.addAll(commands.subList(2, commands.size).map { it.trimStart('/') })
                     }
                 }
+                // Instead of splitting and looping, just pass the commands array to Discrimination
+                val commandsArray = commands.map { it.trimStart('/') }.toTypedArray()
+                val resultDiscrimination = Discrimination(printers, this, saleId ?: "").invoke(commandsArray)
+                if (!resultDiscrimination) {
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(this@BackgroundActivity, "Error printing one or more jobs", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                result = resultDiscrimination
             } catch (e: Exception) {
                 Log.e("BackgroundActivity", "Exception fetching printers: ${e.message}", e)
                 Log.e("BackgroundActivity", "Exception stack trace:", e)
-                Log.e("BackgroundActivity", "Commands at error: ${commands.contentToString()}")
+                Log.e("BackgroundActivity", "Commands at error: ${commands}")
                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                     android.widget.Toast.makeText(this@BackgroundActivity, "Error fetching printers: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                 }

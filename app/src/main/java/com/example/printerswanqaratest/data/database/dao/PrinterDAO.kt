@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.example.printerswanqaratest.data.database.entities.PrintersEntity
 
 @Dao
@@ -19,11 +20,14 @@ interface PrinterDAO {
     fun loadAllByIds(userIds: IntArray): List<PrintersEntity>
 
     @Query("SELECT * FROM PrintersEntity WHERE id = :printerId")
-    fun findById(printerId:Int): PrintersEntity
+    fun findById(printerId:String): PrintersEntity
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(vararg users: PrintersEntity)
 
     @Query("DELETE FROM PrintersEntity WHERE id = (:printer)")
     fun delete(printer: Int)
+
+    @Update
+    fun update(printer: PrintersEntity)
 }

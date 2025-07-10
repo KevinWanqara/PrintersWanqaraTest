@@ -8,8 +8,8 @@ class documentType(){
         "IMPRESION_COMANDA:COCINA" to "Comandas cocina",
         "IMPRESION_COMANDA:BARRA" to "Comandas barra",
         "IMPRESION_COMANDA:OTROS" to "Comandas otros",
-        "IMPRESION_COTIZACION_DETALLADA" to "Cotizaciones detalladas",
-        "IMPRESION_COTIZACION_RESUMIDA" to "Cotizaciones resumidas",
+        "IMPRESION_COTIZACION" to "Cotizaciones",
+       // "IMPRESION_COTIZACION_RESUMIDA" to "Cotizaciones resumidas",
         "APERTURA_GAVETA" to "Gaveta de dinero",
         "IMPRESION_CIERRE_CAJA" to "Cierre de caja"
     )

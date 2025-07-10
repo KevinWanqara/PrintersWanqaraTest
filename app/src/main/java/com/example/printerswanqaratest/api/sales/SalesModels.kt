@@ -55,11 +55,49 @@ data class Sales(
     val description: String?,
     val complete: Boolean?,
     val change_amount : Double?,
-    val inventory_records: List<SaleInventoryRecord>?
+    val inventory_records: List<SaleInventoryRecord>?,
+    val order : OrderData,
 
 
 )
 
+data class OrderData (
+    val id : String,
+    val date : String,
+    val observation : String?,
+    val sequential : String,
+    val status : String,
+    val table : Table,
+    val type : String,
+    val waiter : String,
+    val pax : Int,
+    val order_prints : List<OrderPrints>,
+)
+data class OrderPrints(
+    val sequential: String,
+    val order_print_details: List<OrderPrintDetails>
+)
+
+data class OrderPrintDetails(
+    val type : String,
+    val sequential: String,
+    val product_name : String,
+    val amount : Double,
+    val printers : List<Printers>,
+)
+
+data class Printers (
+    val id: String,
+    val code : String,
+    val name : String,
+    val observation : String?,
+
+)
+
+data class Table(
+    val id: String,
+    val name: String,
+)
 data class SaleInventoryRecord(
     val id: String,
     val date: String,

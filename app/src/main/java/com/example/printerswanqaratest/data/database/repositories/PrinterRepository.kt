@@ -9,7 +9,7 @@ class PrinterRepository @Inject constructor(
 ) {
     suspend fun add(printersEntity: PrintersEntity) {
 
-        /*
+        printersEntity.id = null
         val printersList = printerDAO.getAll()
         if (printersList.isNotEmpty()){
             printersList.forEach lit@{ it ->
@@ -23,9 +23,9 @@ class PrinterRepository @Inject constructor(
                 }
             }
         }
-        */
+
         // Always insert as new: set id to null so Room generates a new id
-        printersEntity.id = null
+
         println(
             "Inserting new printer entity with document type ${printersEntity.documentType}."
         )
@@ -39,10 +39,13 @@ class PrinterRepository @Inject constructor(
         return printerDAO.delete(printer)
     }
 
-    suspend fun findPrinterById(id:Int): PrintersEntity {
+    suspend fun findPrinterById(id:String): PrintersEntity {
         return printerDAO.findById(id)
     }
     suspend fun findPrinterByDocumentType(document:String): PrintersEntity? {
         return printerDAO.getPrinterByDocumentType(document)
+    }
+    suspend fun update(printersEntity: PrintersEntity) {
+        printerDAO.update(printersEntity)
     }
 }

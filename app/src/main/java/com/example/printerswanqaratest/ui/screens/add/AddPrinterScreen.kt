@@ -29,7 +29,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Check
 
 import com.example.printerswanqaratest.data.database.entities.PrintersEntity
 import androidx.compose.ui.platform.LocalContext
@@ -60,7 +63,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import com.example.printerswanqaratest.data.bluetooth.AndroidBluetoothController
-
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+@OptIn(ExperimentalLayoutApi::class)
 @RequiresApi(Build.VERSION_CODES.P)
 @Composable
 fun AddPrinterScreen() {
@@ -111,7 +116,7 @@ fun AddPrinterScreen() {
             color = Secondary,
             trackColor = Secondary.copy(alpha = 0.2f),
         )
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             // Show impresion.gif from drawable using Accompanist Coil for GIF support
             LaunchedEffect(Unit) { }
 
@@ -372,53 +377,95 @@ fun AddPrinterScreen() {
             }
             // Step 4: Document type selection
             if (step == 4) {
-                Text("Select document types:")
+                Text("Que tipo de documento desea imprimir:")
                 val docTypeObj = remember { documentType() }
                 val docValues = remember { docTypeObj.getDocuments() }
-                Column(Modifier.fillMaxWidth()) {
-                    docValues.chunked(2).forEach { rowTypes ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            rowTypes.forEach { value ->
-                                val key = docTypeObj.findKeyByDocument(value) ?: value
-                                val isSelected = selectedDocTypes.value.contains(key)
-                                Card(onClick = {
-                                    selectedDocTypes.value = if (isSelected) {
-                                        selectedDocTypes.value - key
-                                    } else {
-                                        selectedDocTypes.value + key
-                                    }
-                                },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(vertical = 4.dp),
-                                    border = if (isSelected) BorderStroke(2.dp, Primary) else null,
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isSelected) Primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
-                                    )
-                                ) {
-                                    Box(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 16.dp),
-                                        contentAlignment = Alignment.Center
+
+                Box(Modifier.fillMaxSize().padding(vertical = 8.dp),
+                    contentAlignment =  Alignment.TopCenter
+
+                ) {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        docValues.chunked(2).forEach { rowTypes ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                rowTypes.forEach { value ->
+                                    val key = docTypeObj.findKeyByDocument(value) ?: value
+                                    val isSelected = selectedDocTypes.value.contains(key)
+                                    Card(
+                                        onClick = {
+                                            selectedDocTypes.value = if (isSelected) {
+                                                selectedDocTypes.value - key
+                                            } else {
+                                                selectedDocTypes.value + key
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(3f / 2f)
+                                            .padding(4.dp),
+                                        border = if (isSelected) BorderStroke(2.dp, Primary) else BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (isSelected) Primary.copy(alpha = 1f) else MaterialTheme.colorScheme.surface
+                                        )
+
                                     ) {
-                                        Text(value, style = MaterialTheme.typography.bodyMedium)
+                                        Box(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .fillMaxHeight()
+                                                .padding( 16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                value,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                                modifier = Modifier.align(Alignment.Center)
+                                            )
+                                            if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Selected",
+                                                    tint = Color.White,
+                                                    modifier = Modifier
+                                                        .size(20.dp)
+                                                        .align(Alignment.TopEnd)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
+                                if (rowTypes.size == 1) Spacer(Modifier.weight(1f))
                             }
-                            if (rowTypes.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
+
+
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .fillMaxWidth()
+                            .background( MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                            ,
+                        horizontalArrangement = Arrangement.SpaceBetween
+
+                    ) {
+                        OutlinedButton(onClick = { step = 3 }, border = BorderStroke(2.dp, Primary)) { Text("Atras") }
+                        Button(
+                            onClick = { step = 5 },
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                            enabled = selectedDocTypes.value.isNotEmpty()
+                        ) { Text("Siguiente") }
+                    }
                 }
-                Spacer(Modifier.weight(1f, fill = true))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    OutlinedButton(onClick = { step = 3 }, border = BorderStroke(2.dp, Primary)) { Text("Atras") }
-                    Button(
-                        onClick = { step = 5 },
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                        enabled = selectedDocTypes.value.isNotEmpty()
-                    ) { Text("Siguiente") }
-                }
+
+
+
+
             }
             // Step 5: Save
             if (step == 5) {
@@ -501,20 +548,29 @@ fun AddPrinterScreen() {
                 val docTypeObj = documentType()
                 val selectedDocNames = selectedDocTypes.value.mapNotNull { docTypeObj.findDocumentByKey(it) }
                 Text("Documentos seleccionados:", style = MaterialTheme.typography.bodyMedium)
-                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp , horizontal = 4.dp),
+
+                ) {
                     selectedDocNames.forEach { docName ->
                         Card(
                             shape = RoundedCornerShape(8.dp),
                             colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.15f)),
-                            modifier = Modifier.height(32.dp)
+                            modifier = Modifier.height(32.dp).
+                                padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Box(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+                            Box(
+                                Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(docName, style = MaterialTheme.typography.bodySmall, color = Primary)
                             }
                         }
                     }
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.weight(1f, fill = true))
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween

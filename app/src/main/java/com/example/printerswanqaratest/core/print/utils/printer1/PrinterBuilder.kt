@@ -213,7 +213,7 @@ class PrinterBuilder(private val tipo: String?) {
                 // imprimir
                 val prn = PrinterHelpers(caracteres, copias)
                 prn.iniciar()
-
+                prn.dobleAltoOn()
                 val lineSpacing = printerConfig?.optBoolean("line_spacing")
                 val logo = printerConfig?.optBoolean("logo")
 
@@ -249,12 +249,7 @@ class PrinterBuilder(private val tipo: String?) {
 
                 if(logo==true){
                     prn.logo(url, this)
-
                 }
-
-
-
-
                 if (sj != null) {
 
 
@@ -401,13 +396,17 @@ class PrinterBuilder(private val tipo: String?) {
                     10,
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
+                val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
+                for (j in 0 until line_breaks) {
+                    prn.agregarSalto()
+                }
                 prn.feedFinal()
                 prn.cortar()
 
                 enviarImprimir(prn.getTrabajo())
+                closeAll()
 
             }
-            closeAll()
 
         } catch (e: JSONException) {
             e.printStackTrace()
@@ -426,7 +425,7 @@ class PrinterBuilder(private val tipo: String?) {
 
             var jo: JSONObject
 
-            val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("invoice")
+            val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
             println("Printer Config: $printerConfig")
 
 
@@ -437,7 +436,7 @@ class PrinterBuilder(private val tipo: String?) {
                 // imprimir
                 val prn = PrinterHelpers(caracteres, copias)
                 prn.iniciar()
-
+                prn.dobleAltoOn()
                 val lineSpacing = printerConfig?.optBoolean("line_spacing")
                 val logo = printerConfig?.optBoolean("logo")
 
@@ -473,14 +472,8 @@ class PrinterBuilder(private val tipo: String?) {
 
                 if(logo==true){
                     prn.logo(url, this)
-
                 }
-
-
-
-
                 if (sj != null) {
-
 
                     if (sj.optString("business_name") != "null") {
                         prn.escribirTextoSinSalto(sj.optString("business_name"))
@@ -613,13 +606,18 @@ class PrinterBuilder(private val tipo: String?) {
                     10,
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
+
+                val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
+                for (j in 0 until line_breaks) {
+                    prn.agregarSalto()
+                }
                 prn.feedFinal()
                 prn.cortar()
 
                 enviarImprimir(prn.getTrabajo())
-
+                closeAll()
             }
-            closeAll()
+
 
         } catch (e: JSONException) {
             e.printStackTrace()
@@ -780,7 +778,7 @@ class PrinterBuilder(private val tipo: String?) {
 
 
 
-    fun imprimirComandas(js: JSONObject?, copias: Int,     sj : JSONObject?,  caracteres: Int) {
+    fun imprimirComandas(js: JSONObject?, sj : JSONObject?, copias: Int,      caracteres: Int,printCode: String) {
         try {
             if (js == null) return
 
@@ -788,60 +786,78 @@ class PrinterBuilder(private val tipo: String?) {
             val detalles: JSONArray
             var items: Int
             var jo: JSONObject
-
+            val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("order")
+            println("Printer Config: $printerConfig")
             // imprimir
             val prn = PrinterHelpers(caracteres, copias)
             prn.iniciar()
-            prn.setFontB()
-            prn.lineHeight2()
+
+            val lineSpacing = printerConfig?.optBoolean("line_spacing")
+
+
+            if (lineSpacing == true ) {
+                println("Setting line spacing applied")
+                prn.lineHeight2()
+            }else {
+                println("Setting default line spacing")
+                prn.lineHeight()
+            }
             prn.alineadoCentro()
-            prn.dobleAnchoOn()
-            prn.agregarTexto("PEDIDO " + js.optString("numeroPed"))
-            prn.agregarTexto(js.optString("areaImpresionPed") + " (" + js.optString("numeroCom") + ")")
+            val orderData = js.getJSONObject("order")
+            println("Order Data: $orderData")
+
+
+            //Font selection based on printerConfig
+            val fontType = printerConfig?.optString("font") ?: "A"
+            println("Font Type: $fontType")
+            when (fontType.uppercase()) {
+                "A" -> prn.setFontA() //Normal
+                "B" -> prn.setFontB() //Pequeña
+                "AA" -> prn.setFontAA() //Extra Grande
+                "BB" -> prn.setFontBB() //Grande
+
+            }
+
+            val order_prints = orderData.getJSONObject("order_prints")
+            println("Order Prints: $order_prints")
+            prn.agregarTexto("Orden " + (js.getJSONObject("order").optString("sequential") ?: "N/A"))
             prn.agregarSalto()
-            prn.dobleAnchoOff()
-            prn.setFontA()
+            prn.agregarTexto(printCode + (js.getJSONObject("order").optString("sequential") ?: "N/A"))
+            prn.agregarSalto()
             prn.alineadoIzquierda()
-            prn.escribirTextoSinSalto("Atendido por: ")
-            prn.escribirTextoSinSalto(js.optString("usuarioAtencionPed"))
+
             prn.agregarSalto()
-            if (js.optString("zonaPed") != "null") prn.agregarTexto("Zona: " + js.optString("zonaPed"))
-            if (js.optString("numeroMesaPed") != "null") prn.agregarTexto("Mesa: " + js.optString("numeroMesaPed"))
-            prn.escribirTextoSinSalto("Fecha y hora: ")
-            prn.escribirTextoSinSalto(js.optString("fechaPed"))
+            prn.agregarTexto("Mesero: " + (js.getJSONObject("order").optString("waiter") ?: "N/A"))
             prn.agregarSalto()
-            prn.setFontA()
-            prn.escribirTextoSinSalto("Cant   Descripción")
+            prn.agregarTexto("Comensales: " + (js.getJSONObject("order").optString("pax") ?: "N/A"))
             prn.agregarSalto()
             prn.LineasIgual()
-            detalles = js.getJSONArray("detallePed")
+            detalles = js.getJSONArray("details")
             for (j in 0 until detalles.length()) {
                 jo = detalles.getJSONObject(j)
                 prn.escribirTextoSinSalto(
-                    jo.optString("signoPro") + jo.optString("cantidadPro") + " " + jo.optString(
-                        "descripcionPro"
-                    )
+                    "+ " + jo.optString("amount") + " " +  jo.getJSONObject("product").optString("name")
                 )
-                if (jo.optString("observacionPro") !== "null") {
-                    prn.escribirTextoSinSalto(" ( " + jo.optString("observacionPro") + " )")
-                }
+
                 prn.agregarSalto()
             }
             prn.LineasIgual()
-            prn.alineadoIzquierda()
-            if (js.optString("observacionPed") != "null") {
-                prn.agregarTexto("OBSERVACIONES:")
-                prn.agregarTexto(js.optString("observacionPed"))
-                prn.agregarSalto()
-            }
             prn.beep1()
             prn.beep2()
             prn.negritaOn()
-            prn.agregarTexto(js.optString("tipoPed"))
+            prn.agregarTexto(  (js.getJSONObject("order").optString("type") ?: "N/A"))
+
             prn.negritaOff()
+
+            val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
+            for (i in 0 until line_breaks) {
+                prn.agregarSalto()
+            }
             prn.feedFinal()
             prn.cortar()
             enviarImprimir(prn.getTrabajo())
+
+            closeAll()
         } catch (e: JSONException) {
             e.printStackTrace()
         }

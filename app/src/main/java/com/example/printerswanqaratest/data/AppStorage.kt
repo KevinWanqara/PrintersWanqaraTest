@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.printerswanqaratest.api.Setting
+import com.example.printerswanqaratest.api.UserDetails
 import com.example.printerswanqaratest.api.sales.Settings
 import com.google.gson.Gson
 
@@ -12,6 +13,7 @@ object AppStorage {
     private const val KEY_RUC = "ruc"
     private const val AUTH_TOKEN = "auth_token"
     private const val SETTINGS = "settings"
+    private const val USER_DATA = "user_data"
 
     fun saveRuc(context: Context, ruc: String) {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -43,11 +45,33 @@ object AppStorage {
         return prefs.getString(SETTINGS, null)
     }
 
+    fun saveUserData(context: Context, userData: UserDetails) {
+
+        val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit {
+            putString(USER_DATA, Gson().toJson(userData))
+        }
+    }
+
+
+    fun getUserData(context: Context): UserDetails? {
+        val prefs: SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val userDataJson = prefs.getString(USER_DATA, null)
+        return if (userDataJson != null) {
+            Gson().fromJson(userDataJson, UserDetails::class.java)
+        } else {
+            null
+        }
+    }
+
     fun clearSession(context: Context) {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit {
             remove(KEY_RUC)
             remove(AUTH_TOKEN)
+            remove(SETTINGS)
+            remove(USER_DATA)
         }
     }
 }

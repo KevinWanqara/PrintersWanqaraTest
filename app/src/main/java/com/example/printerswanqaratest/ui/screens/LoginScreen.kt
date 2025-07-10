@@ -175,6 +175,7 @@ fun LoginScreen(
                                 onLoginSuccess(response.data.token)
                                 AppStorage.saveToken(context, response.data.token)
                                 AppStorage.saveSettings(context,response.data.setting)
+                                AppStorage.saveUserData(context, response.data.user)
 
 
                             } catch (e: Exception) {

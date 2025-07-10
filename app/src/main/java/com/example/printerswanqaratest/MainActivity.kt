@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,13 +31,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.FloatingActionButton
@@ -44,11 +39,23 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.printerswanqaratest.ui.theme.Primary
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import com.google.accompanist.navigation.animation.AnimatedNavHost
+import com.google.accompanist.navigation.animation.composable
+
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 
 class MainActivity : ComponentActivity() {
     //Main Activity
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    @OptIn(ExperimentalMaterial3Api::class)
+    //@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -102,6 +109,7 @@ class MainActivity : ComponentActivity() {
                                     title = {
                                         when (currentRoute) {
                                             "add_printer" -> Text("Agregar", color = Color.White)
+                                            "edit_printer/{printerId}" -> Text("Actualizar", color = Color.White)
                                             "list_printers", null -> {
                                                 Row(verticalAlignment = Alignment.CenterVertically ,) {
                                                     Icon(
@@ -120,7 +128,9 @@ class MainActivity : ComponentActivity() {
                                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                                         containerColor = Primary,
                                         navigationIconContentColor = Color.White,
-                                        actionIconContentColor = Color.White
+                                        actionIconContentColor = Color.White,
+                                        titleContentColor = Color.White,
+
                                     ),
                                     navigationIcon = {
                                         if (showBack) {
@@ -134,25 +144,69 @@ class MainActivity : ComponentActivity() {
                                     },
                                     actions = {
                                         Box {
+                                            val userData = remember { mutableStateOf(AppStorage.getUserData(context)) }
+                                            val profileImageUrl = userData.value?.full_image_path
                                             IconButton(onClick = { profileMenuExpanded = true }) {
-                                                Icon(Icons.Filled.Person, contentDescription = "Profile")
+                                                if (!profileImageUrl.isNullOrEmpty()) {
+                                                    Image(
+                                                        painter = rememberAsyncImagePainter(profileImageUrl),
+                                                        contentDescription = "Profile Image",
+                                                        modifier = Modifier
+                                                            .size(32.dp)
+                                                            .clip(CircleShape),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                } else {
+                                                    Icon(Icons.Filled.Person, contentDescription = "Profile")
+                                                }
                                             }
                                             DropdownMenu(
                                                 expanded = profileMenuExpanded,
                                                 onDismissRequest = { profileMenuExpanded = false }
                                             ) {
+                                                // User info header
+                                                Row(
+                                                    modifier = Modifier.padding(16.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    if (!profileImageUrl.isNullOrEmpty()) {
+                                                        Image(
+                                                            painter = rememberAsyncImagePainter(profileImageUrl),
+                                                            contentDescription = "Profile Image",
+                                                            modifier = Modifier
+                                                                .size(48.dp)
+                                                                .clip(CircleShape),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                    } else {
+                                                        Icon(
+                                                            Icons.Filled.Person,
+                                                            contentDescription = "Profile",
+                                                            modifier = Modifier
+                                                                .size(48.dp)
+                                                                .clip(CircleShape)
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    Column {
+                                                        Text(userData.value?.name ?: "User Name", style = MaterialTheme.typography.titleMedium)
+                                                        Text(userData.value?.email ?: "user@email.com", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                                    }
+
+                                                }
+                                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
                                                 DropdownMenuItem(
-                                                    text = { Text("Profile") },
-                                                    onClick = { profileMenuExpanded = false /* TODO: Navigate to profile */ }
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text("Logout") },
+
+                                                    text = { Text("Cerrar Sesión") },
+                                                    leadingIcon = { Icon(Icons.Filled.Logout, contentDescription = "Logout") },
                                                     onClick = {
                                                         profileMenuExpanded = false
                                                         AppStorage.clearSession(context)
                                                         isLoggedIn = false
                                                         isDomainValidated = false
                                                     }
+
                                                 )
                                             }
                                         }
@@ -171,17 +225,26 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         ) { innerPadding ->
-                            NavHost(
+                            AnimatedNavHost(
                                 navController = navController,
                                 startDestination = "list_printers",
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(innerPadding)
+                                    .padding(innerPadding),
+                                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) },
+                                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) },
+                                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
                             ) {
                                 composable("home") { HomeScreen(navController) }
                                 composable("add_printer") { AddPrinterScreen() }
-                                composable("edit_printer") { EditPrinterScreen() }
-                                composable("list_printers") { ListPrintersScreen() }
+                                composable("edit_printer/{printerId}") { backStackEntry ->
+                                    val printerId = backStackEntry.arguments?.getString("printerId")
+                                    EditPrinterScreen(printerId)
+                                }
+                                composable("list_printers") { ListPrintersScreen(
+                                    navController
+                                ) }
                                 composable("configure_printer") { ConfigurePrinterScreen() }
                                 composable("printer_test") { PrinterTestScreen() }
                                 composable("message") { MessageScreen() }

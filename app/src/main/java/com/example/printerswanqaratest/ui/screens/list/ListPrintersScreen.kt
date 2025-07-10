@@ -1,5 +1,6 @@
 package com.example.printerswanqaratest.ui.screens.list
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,7 @@ import com.example.printerswanqaratest.ui.theme.Primary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -40,15 +42,16 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.navigation.NavController
 
 @Composable
-fun ListPrintersScreen() {
+fun ListPrintersScreen(navController: NavController) {
     val context = LocalContext.current
     var printers by remember { mutableStateOf<List<Printers>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
-    var groupBy by remember { mutableStateOf("None") }
+    var groupBy by remember { mutableStateOf("Ninguno") }
     var searchName by remember { mutableStateOf("") }
-    val groupOptions = listOf("None", "Name", "Type")
+    val groupOptions = listOf("Ninguno", "Nombre", "Tipo")
 
     suspend fun refreshPrinters() {
         val db = DatabaseProvider.getDatabase(context)
@@ -85,17 +88,7 @@ fun ListPrintersScreen() {
 
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Search by IP
-            OutlinedTextField(
-                value = searchName,
-                onValueChange = { searchName = it },
-                label = { Text("Buscar por Nombre") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                modifier = Modifier.weight(1f)
-            )
-        }
+
         Spacer(Modifier.height(16.dp))
 
         // Filter and group printers
@@ -103,8 +96,8 @@ fun ListPrintersScreen() {
             searchName.isBlank() || (it.name?.contains(searchName, ignoreCase = true) == true)
         }
         val grouped: Map<String, List<Printers>> = when (groupBy) {
-            "Name" -> filteredPrinters.groupBy { it.name }
-            "Type" -> filteredPrinters.groupBy { it.type }
+            "Nombre" -> filteredPrinters.groupBy { it.name }
+            "Tipo" -> filteredPrinters.groupBy { it.type }
             else -> mapOf("Todos" to filteredPrinters)
         }
 
@@ -131,14 +124,14 @@ fun ListPrintersScreen() {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                 IconButton(onClick = { expanded = !expanded }) {
                                     Icon(
-                                        imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                                        imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                         contentDescription = if (expanded) "Colapsar" else "Expandir"
                                     )
                                 }
                                 Text(
                                     text = when (groupBy) {
-                                        "Name" -> "Nombre: $groupKey"
-                                        "Type" -> "Tipo: $groupKey"
+                                        "Nombre" -> "Nombre: $groupKey"
+                                        "Tipo" -> "Tipo: $groupKey"
                                         else -> "Todas las impresoras"
                                     },
                                     style = MaterialTheme.typography.titleMedium,
@@ -191,6 +184,9 @@ fun ListPrintersScreen() {
                                                 refreshPrinters()
                                             }
                                         }
+                                    },
+                                    onEdit = {
+                                        printer.id?.let { navController.navigate("edit_printer/$it") }
                                     }
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -206,7 +202,8 @@ fun ListPrintersScreen() {
 @Composable
 fun PrinterCard(
     printer: Printers,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
@@ -220,7 +217,9 @@ fun PrinterCard(
     val docTypeObj = documentType()
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -291,7 +290,7 @@ fun PrinterCard(
             text = {
                 Text("Are you sure you want to delete the printer:\n\n" +
                         "**${printer.name}**\n" +
-                        "Type: ${printer.type}\n" +
+                        "Tipo: ${printer.type}\n" +
                         "IP: ${printer.address}")
             },
             confirmButton = {

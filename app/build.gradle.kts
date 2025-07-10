@@ -104,4 +104,5 @@ dependencies {
 
     implementation("io.coil-kt:coil-gif:2.4.0")
 
+    implementation("com.google.accompanist:accompanist-navigation-animation:0.34.0")
 }
