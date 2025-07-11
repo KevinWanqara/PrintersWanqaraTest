@@ -29,7 +29,6 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         return narmalizarString(trabajo)
     }
 
-    // METODOS
 
     // METODOS
     private fun narmalizarString(szString: String): String {
@@ -74,10 +73,14 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
 
     fun feedFinal() {
         val desplazamientoFinal = "\n\n\n\n\n\n\n"
-        trabajo = trabajo + desplazamientoFinal
+        trabajo += desplazamientoFinal
         trabajo = trabajo + "\u001B" + "\u0033" + "\u0013"
     }
-
+    fun feed(n: Int) {
+        // n must be between 0 and 255
+        val feedCommand = "\u001B\u0064" + n.toChar()
+        escribirTextoSinSalto(feedCommand)
+    }
     fun negritaOff() {
         escribirTextoSinSalto("\u001B" + "\u0045" + "\u0000")
     }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.BluetoothSearching
@@ -18,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.printerswanqaratest.domain.models.BluetoothDomain
 import kotlinx.coroutines.launch
-
+import kotlinx.coroutines.delay
 @Composable
 fun BluetoothDevicePickerScreen(
     pairedDevices: List<BluetoothDomain>,
@@ -39,6 +40,13 @@ fun BluetoothDevicePickerScreen(
         pairedDevices + uniqueScanned
     }
 
+    LaunchedEffect(Unit) {
+        scanning = true
+        onStartScan()
+        delay(3000) // 2 seconds, adjust as needed
+        scanning = false
+        onStopScan()
+    }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -53,7 +61,7 @@ fun BluetoothDevicePickerScreen(
                     scanning = !scanning
                     if (scanning) onStartScan() else onStopScan()
                 }, modifier = Modifier.padding(start = 8.dp)) {
-                    Text(if (scanning) "Stop Scan" else "Start Scan")
+                    Text(if (scanning) "Parar" else "Buscar")
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -123,7 +131,7 @@ fun BluetoothDeviceRow(
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(device.name ?: "Unknown", style = MaterialTheme.typography.bodyLarge ,color = Color.Black)
+                Text(device.name ?: "Desconocido", style = MaterialTheme.typography.bodyLarge ,color = Color.Black)
                 Text(device.address, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
             if (!isPaired) {
@@ -131,13 +139,13 @@ fun BluetoothDeviceRow(
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
                     Button(onClick = onPair, modifier = Modifier.height(32.dp)) {
-                        Icon(Icons.Default.Link, contentDescription = "Pair")
+                        Icon(Icons.Default.AddLink, contentDescription = "Vincular")
                         Spacer(Modifier.width(4.dp))
-                        Text("Pair", fontSize = MaterialTheme.typography.bodySmall.fontSize)
+                        Text("Vincular", fontSize = MaterialTheme.typography.bodySmall.fontSize)
                     }
                 }
             } else {
-                Icon(Icons.Default.LinkOff, contentDescription = "Paired", tint = Color(0xFF388E3C), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Link, contentDescription = "Paired", tint = Color(0xFF388E3C), modifier = Modifier.size(20.dp))
             }
         }
     }

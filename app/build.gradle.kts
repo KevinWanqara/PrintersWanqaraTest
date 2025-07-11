@@ -13,11 +13,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.printerswanqaratest"
-        minSdk = 24
+        minSdk = 30 //Android 11 Red Velvet Cake
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

@@ -30,12 +30,13 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import java.util.UUID
+import androidx.core.content.edit
 
 class PrinterBuilder(private val tipo: String?) {
 
     private var socketBluetooth: BluetoothSocket? = null
     private var streamBluetooth: OutputStream? = null
-    private var usbOutputStream: OutputStream? = null
+    var usbOutputStream: OutputStream? = null
     private var socketRed: Socket? = null
     private var streamRed: OutputStream? = null
     private val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
@@ -139,6 +140,7 @@ class PrinterBuilder(private val tipo: String?) {
                 }
             }
             val filter = IntentFilter(ACTION_USB_PERMISSION)
+
             ContextCompat.registerReceiver(
                 context,
                 usbReceiver,
@@ -149,19 +151,21 @@ class PrinterBuilder(private val tipo: String?) {
             val usbManager =
                 context.getSystemService(AppCompatActivity.USB_SERVICE) as UsbManager
 
-            if (usbConnection != null && usbManager != null) {
+            if (usbConnection != null) {
                 val permissionIntent: PendingIntent = PendingIntent.getBroadcast(
                     context, 0, Intent(ACTION_USB_PERMISSION),
                     PendingIntent.FLAG_IMMUTABLE
                 )
                 if (!usbManager.hasPermission(usbConnection.device)) {
                     usbManager.requestPermission(usbConnection.device, permissionIntent)
-                    context.getSharedPreferences("usb", 0).edit().putBoolean("permissions", true)
-                        .apply()
+                    context.getSharedPreferences("usb", 0).edit {
+                        putBoolean("permissions", true)
+                    }
                 } else {
                     usbOutputStream = UsbOutputStream(usbManager, usbConnection.device)
-                    context.getSharedPreferences("usb", 0).edit().putBoolean("permissions", false)
-                        .apply()
+                    context.getSharedPreferences("usb", 0).edit {
+                        putBoolean("permissions", false)
+                    }
                 }
                 return true
             }
@@ -191,7 +195,12 @@ class PrinterBuilder(private val tipo: String?) {
     //sj settings object
     //js data object
 
-    suspend fun imprimirFacturaElectronica(js: JSONObject?, sj : JSONObject?,  copias: Int, caracteres: Int, ) {
+    suspend fun imprimirFacturaElectronica(
+        js: JSONObject?,
+        sj: JSONObject?,
+        copias: Int,
+        caracteres: Int
+    ) {
         println("Imprimiendo factura electronica")
         println(js.toString())
         try {
@@ -419,40 +428,28 @@ class PrinterBuilder(private val tipo: String?) {
         println(js.toString())
         try {
             if (js == null) return
-
-
             var detalles: JSONArray
-
             var jo: JSONObject
-
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
             println("Printer Config: $printerConfig")
+
+            val prn = PrinterHelpers(caracteres, copias)
+            val lineSpacing = printerConfig?.optBoolean("line_spacing")
+            val logo = printerConfig?.optBoolean("logo")
+            //Font selection based on printerConfig
+            val fontType = printerConfig?.optString("font") ?: "A"
+            println("Font Type: $fontType")
+            val url = js.getJSONObject("subsidiary").getJSONObject("image")
+                .optString("full_path")
 
 
 
             for (i in 0 until copias) {
                 println("Imprimiendo copia $i")
-
                 // imprimir
-                val prn = PrinterHelpers(caracteres, copias)
                 prn.iniciar()
-                prn.dobleAltoOn()
-                val lineSpacing = printerConfig?.optBoolean("line_spacing")
-                val logo = printerConfig?.optBoolean("logo")
+                //prn.dobleAltoOn()
 
-                if (lineSpacing == true ) {
-                    println("Setting line spacing applied")
-                    prn.lineHeight2()
-                }else {
-                    println("Setting default line spacing")
-                    prn.lineHeight()
-                }
-                prn.alineadoCentro()
-
-
-                //Font selection based on printerConfig
-                val fontType = printerConfig?.optString("font") ?: "A"
-                println("Font Type: $fontType")
                 when (fontType.uppercase()) {
                     "A" -> prn.setFontA() //Normal
                     "B" -> prn.setFontB() //Pequeña
@@ -462,19 +459,23 @@ class PrinterBuilder(private val tipo: String?) {
                 }
 
 
-                //Logo
-                val url = js.getJSONObject("subsidiary").getJSONObject("image")
-                    .optString("full_path")
-                //val url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9FumO9nuURSgAVA78eMfhYElZLtUDgvJaAA&s"
-                //val mediaMap = mapOf("imgU" to listOf(url))
-                //printMediaJob(MediaBuilder(mediaMap))
+
+                if (lineSpacing == true ) {
+                    println("Setting line spacing applied")
+                    prn.lineHeight2()
+                }else {
+                    println("Setting default line spacing")
+                    prn.lineHeight()
+                }
 
 
+                prn.alineadoCentro()
+
+                prn.agregarSalto()
                 if(logo==true){
                     prn.logo(url, this)
                 }
                 if (sj != null) {
-
                     if (sj.optString("business_name") != "null") {
                         prn.escribirTextoSinSalto(sj.optString("business_name"))
                         prn.agregarSalto()
@@ -501,18 +502,11 @@ class PrinterBuilder(private val tipo: String?) {
                             "email"
                         )
                     )
-
-
                 }
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Recibo ")
                 prn.escribirTextoSinSalto(js.optString("number"))
-
-
-
-
                 prn.agregarSalto()
-
                 prn.alineadoIzquierda()
                 prn.escribirTextoSinSalto("Fecha: ")
                 prn.escribirTextoSinSalto(js.optString("date"))
@@ -523,8 +517,14 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.escribirTextoSinSalto("Identificación: ")
                 prn.escribirTextoSinSalto(js.getJSONObject("customer").optString("identity"))
                 prn.agregarSalto()
+                prn.escribirTextoSinSalto("Teléfono: ")
+                prn.escribirTextoSinSalto(js.getJSONObject("customer").getJSONArray("phones").optString(0, ""))
+                prn.agregarSalto()
                 prn.escribirTextoSinSalto("Vendedor: ")
-                prn.escribirTexto(js.getJSONObject("user").optString("name"))
+                prn.escribirTextoSinSalto(js.getJSONObject("user").optString("name"))
+                prn.agregarSalto()
+                prn.escribirTextoSinSalto("Orden: ")
+                prn.escribirTexto( (js.getJSONObject("order").optString("sequential") ?: "N/A"))
                 prn.LineasGuion()
                 prn.escribirTextoSinSalto("Cant Descripción")
                 prn.agregarCaracteres((caracteres - 26).coerceAtLeast(0), "")
@@ -558,17 +558,12 @@ class PrinterBuilder(private val tipo: String?) {
                     )
                 }
                 prn.LineasIgual()
-
-
                 //Summary
                 prn.alineadoDerecha()
-
                 if (js.has("discount")) {
-
                     prn.escribirTextoSinSalto("Descuentos:")
                     prn.agregarCaracteresDerecha(10, df.format(js.getDouble("discount")))
                     prn.agregarSalto()
-
                 }
                 prn.escribirTextoSinSalto("Subtotal:")
                 prn.agregarCaracteresDerecha(10, df.format(js.getDouble("subtotal")))
@@ -606,16 +601,30 @@ class PrinterBuilder(private val tipo: String?) {
                     10,
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
-
+/*
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
                 }
-                prn.feedFinal()
+                */
+                prn.agregarSalto()
+
+                if (lineSpacing == true ) {
+                    println("Setting line spacing applied")
+                    prn.feed(7)
+                }else {
+                    println("Setting default line spacing")
+                    prn.feed(14)
+                }
+
+
                 prn.cortar()
 
+                println("Comandos")
+                println(prn.getTrabajo().toString())
                 enviarImprimir(prn.getTrabajo())
-                closeAll()
+
+
             }
 
 
@@ -778,7 +787,7 @@ class PrinterBuilder(private val tipo: String?) {
 
 
 
-    fun imprimirComandas(js: JSONObject?, sj : JSONObject?, copias: Int,      caracteres: Int,printCode: String) {
+    suspend fun imprimirComandas(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int, printCode: String) {
         try {
             if (js == null) return
 
@@ -791,7 +800,6 @@ class PrinterBuilder(private val tipo: String?) {
             // imprimir
             val prn = PrinterHelpers(caracteres, copias)
             prn.iniciar()
-
             val lineSpacing = printerConfig?.optBoolean("line_spacing")
 
 
@@ -818,32 +826,47 @@ class PrinterBuilder(private val tipo: String?) {
 
             }
 
-            val order_prints = orderData.getJSONObject("order_prints")
+            val order_prints = orderData.getJSONArray("order_prints")
             println("Order Prints: $order_prints")
+            val commandSequential = order_prints.getJSONObject(0).optString("sequential") ?: "N/A"
+            val printDetails = order_prints.getJSONObject(0).getJSONArray("order_print_details")
+
+            println("Print Details: $printDetails")
             prn.agregarTexto("Orden " + (js.getJSONObject("order").optString("sequential") ?: "N/A"))
-            prn.agregarSalto()
-            prn.agregarTexto(printCode + (js.getJSONObject("order").optString("sequential") ?: "N/A"))
-            prn.agregarSalto()
+            prn.agregarTexto("$printCode-$commandSequential")
             prn.alineadoIzquierda()
 
             prn.agregarSalto()
             prn.agregarTexto("Mesero: " + (js.getJSONObject("order").optString("waiter") ?: "N/A"))
-            prn.agregarSalto()
-            prn.agregarTexto("Comensales: " + (js.getJSONObject("order").optString("pax") ?: "N/A"))
-            prn.agregarSalto()
-            prn.LineasIgual()
-            detalles = js.getJSONArray("details")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.escribirTextoSinSalto(
-                    "+ " + jo.optString("amount") + " " +  jo.getJSONObject("product").optString("name")
-                )
 
-                prn.agregarSalto()
+            prn.agregarTexto("Comensales: " + (js.getJSONObject("order").optString("pax") ?: "N/A"))
+
+            prn.LineasIgual()
+
+
+            detalles = printDetails
+            for (j in 0 until detalles.length()) {
+                val jo = detalles.getJSONObject(j)
+                val printersArray = jo.optJSONArray("printers")
+                var shouldPrint = false
+                if (printersArray != null) {
+                    for (k in 0 until printersArray.length()) {
+                        val printerObj = printersArray.getJSONObject(k)
+                        if (printerObj.optString("code") == printCode) {
+                            shouldPrint = true
+                            break
+                        }
+                    }
+                }
+                if (shouldPrint) {
+                    prn.escribirTextoSinSalto(
+                        jo.optString("type") +  jo.optInt("amount") + " " +jo.optString("product_name")
+                    )
+                    prn.agregarSalto()
+                }
             }
             prn.LineasIgual()
-            prn.beep1()
-            prn.beep2()
+
             prn.negritaOn()
             prn.agregarTexto(  (js.getJSONObject("order").optString("type") ?: "N/A"))
 
@@ -853,10 +876,21 @@ class PrinterBuilder(private val tipo: String?) {
             for (i in 0 until line_breaks) {
                 prn.agregarSalto()
             }
-            prn.feedFinal()
+            prn.beep1()
+            prn.beep2()
+            if (lineSpacing == true ) {
+                println("Setting line spacing applied")
+                prn.feed(7)
+            }else {
+                println("Setting default line spacing")
+                prn.feed(14)
+            }
             prn.cortar()
             enviarImprimir(prn.getTrabajo())
-
+            if (usbOutputStream != null) {
+                usbOutputStream!!.flush()
+            }
+            kotlinx.coroutines.delay(200) // Ensure printer finishes
             closeAll()
         } catch (e: JSONException) {
             e.printStackTrace()
@@ -1233,7 +1267,7 @@ class PrinterBuilder(private val tipo: String?) {
                 }
             }
             prn.agregarSalto()
-            prn.feedFinal()
+            prn.feed(7)
             prn.cortar()
             enviarImprimir(prn.getTrabajo())
         } catch (e: JSONException) {
@@ -1595,6 +1629,7 @@ class PrinterBuilder(private val tipo: String?) {
                         val style = Style()
                         val escposCoffee = EscposCoffee(style, outputStream)
                         escposCoffee.printMessage(trabajo)
+
                     }
                 }
                 PrinterType.BLUETOOTH.type -> {
@@ -1609,6 +1644,7 @@ class PrinterBuilder(private val tipo: String?) {
                     val style = Style()
                     val escposCoffee = EscposCoffee(style, this.usbOutputStream!!)
                     escposCoffee.printMessage(trabajo)
+
                 }
             }
         } catch (e: Exception) {

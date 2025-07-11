@@ -54,7 +54,6 @@ import androidx.compose.animation.slideOutHorizontally
 
 class MainActivity : ComponentActivity() {
     //Main Activity
-    //@RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

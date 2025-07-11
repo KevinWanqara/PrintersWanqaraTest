@@ -22,6 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.printerswanqaratest.core.print.test.PrintBluetoothTest
+import com.example.printerswanqaratest.core.print.test.PrintUSBTest
+import com.example.printerswanqaratest.core.print.test.PrintWifiTest
 import com.example.printerswanqaratest.core.printType.PrinterType
 import com.example.printerswanqaratest.data.bluetooth.AndroidBluetoothController
 import kotlinx.coroutines.Dispatchers
@@ -209,7 +212,22 @@ fun EditPrinterScreen(printerId: String?) {
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Button(onClick = { /* Test PRinter */ },colors = ButtonDefaults.buttonColors(containerColor = Primary)) {
+                Button(onClick = {
+                    when (selectedType) {
+                        PrinterType.BLUETOOTH.type -> {
+                            android.util.Log.d("AddPrinterScreen", "Calling PrintBluetoothTest from button")
+                            PrintBluetoothTest(context).invoke(bluetoothDevice)
+                        }
+                        PrinterType.USB.type -> {
+                            android.util.Log.d("AddPrinterScreen", "Calling PrintUSBTest from button")
+                            PrintUSBTest(context).invoke()
+                        }
+                        PrinterType.WIFI.type -> {
+                            android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest from button with ip=$address port=$port")
+                            PrintWifiTest(address, port.toInt(), "B").invoke()
+                        }
+                    }
+                },colors = ButtonDefaults.buttonColors(containerColor = Primary)) {
                     Text("Probar Impresora")
                 }
 

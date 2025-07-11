@@ -65,12 +65,19 @@ import androidx.compose.ui.graphics.Color
 import com.example.printerswanqaratest.data.bluetooth.AndroidBluetoothController
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Print
+
+import com.example.printerswanqaratest.core.print.test.PrintUSBTest
+import com.example.printerswanqaratest.core.print.test.PrintWifiTest
+import com.example.printerswanqaratest.core.print.test.PrintBluetoothTest
+
+
 @OptIn(ExperimentalLayoutApi::class)
 @RequiresApi(Build.VERSION_CODES.P)
 @Composable
 fun AddPrinterScreen() {
 
-    var selectedMode by remember { mutableStateOf(PrinterType.USB) }
+    var selectedMode by remember { mutableStateOf(PrinterType.WIFI) }
     val snackbarHostState = remember { SnackbarHostState() }
     val modes = listOf(
         PrinterType.USB to Icons.Default.Usb,
@@ -102,6 +109,14 @@ fun AddPrinterScreen() {
     val scannedDevices by bluetoothController.scannedDevices.collectAsState()
     val documentType = remember { mutableStateOf("") }
     var selectedDocTypes = remember { mutableStateOf(setOf<String>()) }
+
+
+    val portOptions = listOf(
+        9100 to "LAN",
+        6001 to "WIFI"
+    )
+
+
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         val animatedProgress by animateFloatAsState(
             targetValue = step / 5f,
@@ -112,7 +127,7 @@ fun AddPrinterScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(10.dp)
-                .clip(RoundedCornerShape(8.dp)),
+                .clip(RoundedCornerShape(4.dp)),
             color = Secondary,
             trackColor = Secondary.copy(alpha = 0.2f),
         )
@@ -248,7 +263,7 @@ fun AddPrinterScreen() {
                                     Icon(Icons.Default.Bluetooth, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
                                     Spacer(Modifier.width(12.dp))
                                     Column(Modifier.weight(1f)) {
-                                        Text("Dirección MAC", style = MaterialTheme.typography.labelMedium, color = Color.Black)
+                                        Text("Dirección MAC", style = MaterialTheme.typography.labelMedium, color = Color.White)
                                         Text(bluetoothDevice, style = MaterialTheme.typography.bodyLarge)
                                     }
                                     Text("Cambiar", color = Primary, modifier = Modifier.padding(start = 8.dp))
@@ -270,24 +285,57 @@ fun AddPrinterScreen() {
                         OutlinedTextField(
                             value = printerName,
                             onValueChange = { printerName = it },
-                            label = { Text("Printer Name") },
+                            label = { Text("Nombre de Impresora ") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = wifiIp,
                             onValueChange = { wifiIp = it },
-                            label = { Text("IP Address") },
+                            label = { Text("Direccion IP") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = if (wifiPort == 0) "" else wifiPort.toString(),
                             onValueChange = { wifiPort = it.toIntOrNull() ?: 0 },
-                            label = { Text("Port") },
+                            label = { Text("Puerto") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
+                        // Dropdown for port options
+                        var expanded by remember { mutableStateOf(false) }
+                        val portOptions = listOf(9100 to "LAN", 6001 to "WIFI")
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { expanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(text = if (wifiPort == 0) "Seleccionar puerto" else "${wifiPort} (${portOptions.find { it.first == wifiPort }?.second ?: "Personalizado"})")
+                            }
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                portOptions.forEach { (port, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text("$port ($label)") },
+                                        onClick = {
+                                            wifiPort = port
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Personalizado") },
+                                    onClick = {
+                                        wifiPort = 0
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.weight(1f, fill = true))
@@ -312,6 +360,33 @@ fun AddPrinterScreen() {
             }
             // Step 2: Character selection
             if (step == 2) {
+                var testTriggered by remember { mutableStateOf(false) }
+                LaunchedEffect(step, selectedMode) {
+                    if (!testTriggered) {
+                        when (selectedMode) {
+                            PrinterType.BLUETOOTH -> {
+                                android.util.Log.d("AddPrinterScreen", "Calling PrintBluetoothTest on step load")
+                                PrintBluetoothTest(context).invoke(bluetoothDevice)
+                            }
+                            PrinterType.USB -> {
+                                android.util.Log.d("AddPrinterScreen", "Calling PrintUSBTest on step load")
+                                //could fail on non tiramisu sdk
+                                //TODO handle this for legacy devices
+
+                                val result = PrintUSBTest(context).runTest()
+                                if (!result) {
+                                    snackbarHostState.showSnackbar("Error al conectar con la impresora USB")
+                                }
+
+                            }
+                            PrinterType.WIFI -> {
+                                android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest on step load with ip=$wifiIp port=$wifiPort")
+                                PrintWifiTest(wifiIp.trim(), wifiPort, "B").invoke()
+                            }
+                        }
+                        testTriggered = true
+                    }
+                }
                 Column(modifier = Modifier.fillMaxSize()) {
                     Text("Número de caracteres por línea:")
                     // Show animated GIF from assets (must be in app/src/main/assets/impresion.gif)
@@ -338,7 +413,29 @@ fun AddPrinterScreen() {
                         label = { Text("Caracteres") }
                     )
                     Spacer(modifier = Modifier.weight(1f, fill = true))
-
+                    Button(
+                        onClick = {
+                            when (selectedMode) {
+                                PrinterType.BLUETOOTH -> {
+                                    android.util.Log.d("AddPrinterScreen", "Calling PrintBluetoothTest from button")
+                                    PrintBluetoothTest(context).invoke(bluetoothDevice)
+                                }
+                                PrinterType.USB -> {
+                                    android.util.Log.d("AddPrinterScreen", "Calling PrintUSBTest from button")
+                                    PrintUSBTest(context).invoke()
+                                }
+                                PrinterType.WIFI -> {
+                                    android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest from button with ip=$wifiIp port=$wifiPort")
+                                    PrintWifiTest(wifiIp, wifiPort, "B").invoke()
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Print, contentDescription = "Reimprimir", tint = Color.White)
+                        Text("Reimprimir" , color = Color.White, modifier = Modifier.padding(start = 8.dp))
+                    }
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween

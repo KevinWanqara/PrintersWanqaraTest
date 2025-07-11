@@ -1,5 +1,6 @@
 package com.example.printerswanqaratest.ui.screens
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -112,7 +113,6 @@ class BackgroundActivity : ComponentActivity() {
                 val printers = getAllPrinters.getAll()
                 Log.d("BackgroundActivity", "Fetched printers: ${printers.size} found")
                 m_ambiente = "wanqara.app"
-                val saleId = commands.getOrNull(1)
                 val commandList = mutableListOf<String>()
                 if (commands.isNotEmpty()) {
                     // Remove all leading slashes from main command if present
@@ -125,7 +125,7 @@ class BackgroundActivity : ComponentActivity() {
                 }
                 // Instead of splitting and looping, just pass the commands array to Discrimination
                 val commandsArray = commands.map { it.trimStart('/') }.toTypedArray()
-                val resultDiscrimination = Discrimination(printers, this, saleId ?: "").invoke(commandsArray)
+                val resultDiscrimination = Discrimination(printers, this).invoke(commandsArray)
                 if (!resultDiscrimination) {
                     withContext(kotlinx.coroutines.Dispatchers.Main) {
                         android.widget.Toast.makeText(this@BackgroundActivity, "Error printing one or more jobs", android.widget.Toast.LENGTH_SHORT).show()

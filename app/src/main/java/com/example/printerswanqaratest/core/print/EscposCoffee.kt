@@ -17,6 +17,8 @@ import com.github.anastaciocintra.escpos.image.Bitonal
 import com.github.anastaciocintra.escpos.image.BitonalOrderedDither
 import com.github.anastaciocintra.escpos.image.EscPosImage
 import com.github.anastaciocintra.escpos.image.RasterBitImageWrapper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.OutputStream
 import java.net.URL
@@ -78,7 +80,7 @@ class EscposCoffee : PrinterLibraryRepository {
         try {
             this.escPos.write(message)
 //            this.escPos.write("\u001B" + "\u0042" + "\u0005" + "\u0002")
-            //this.escPos.close()
+            this.escPos.close()
         } catch (e: Exception) {
             println(e)
         }
@@ -278,10 +280,9 @@ class EscposCoffee : PrinterLibraryRepository {
             imageWrapper.setJustification(EscPosConst.Justification.Center)
             val escposImage = EscPosImage(BitmapCoffeeImage(image), algorithm)
             escpos.write(imageWrapper, escposImage)
-            escpos.feed(2)
+            escpos.feed(1)
 
-// Add a short delay to allow the printer to process the image
-            Thread.sleep(300)
+
 
         } catch (e: Exception) {
             println(e)
