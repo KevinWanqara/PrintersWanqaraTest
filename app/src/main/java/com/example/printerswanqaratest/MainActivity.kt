@@ -44,13 +44,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import com.google.accompanist.navigation.animation.AnimatedNavHost
+
+
+import androidx.navigation.compose.composable
 import com.google.accompanist.navigation.animation.composable
 
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.material.icons.automirrored.filled.Logout
 
 class MainActivity : ComponentActivity() {
     //Main Activity
@@ -110,7 +113,7 @@ class MainActivity : ComponentActivity() {
                                             "add_printer" -> Text("Agregar", color = Color.White)
                                             "edit_printer/{printerId}" -> Text("Actualizar", color = Color.White)
                                             "list_printers", null -> {
-                                                Row(verticalAlignment = Alignment.CenterVertically ,) {
+                                                Row(verticalAlignment = Alignment.CenterVertically ) {
                                                     Icon(
                                                         painterResource(id = R.drawable.ic_wanqara_logo_foreground),
                                                         contentDescription = "Wanqara Logo",
@@ -135,7 +138,7 @@ class MainActivity : ComponentActivity() {
                                         if (showBack) {
                                             IconButton(onClick = { navController.popBackStack() }) {
                                                 Icon(
-                                                    imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack,
+                                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                                     contentDescription = "Back"
                                                 )
                                             }
@@ -198,7 +201,7 @@ class MainActivity : ComponentActivity() {
                                                 DropdownMenuItem(
 
                                                     text = { Text("Cerrar Sesión") },
-                                                    leadingIcon = { Icon(Icons.Filled.Logout, contentDescription = "Logout") },
+                                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout") },
                                                     onClick = {
                                                         profileMenuExpanded = false
                                                         AppStorage.clearSession(context)
@@ -224,7 +227,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         ) { innerPadding ->
-                            AnimatedNavHost(
+                            NavHost(
                                 navController = navController,
                                 startDestination = "list_printers",
                                 modifier = Modifier

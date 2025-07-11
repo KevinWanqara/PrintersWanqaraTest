@@ -50,7 +50,7 @@ fun ListPrintersScreen(navController: NavController) {
     var printers by remember { mutableStateOf<List<Printers>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     var groupBy by remember { mutableStateOf("Ninguno") }
-    var searchName by remember { mutableStateOf("") }
+    val searchName by remember { mutableStateOf("") }
     val groupOptions = listOf("Ninguno", "Nombre", "Tipo")
 
     suspend fun refreshPrinters() {
@@ -93,7 +93,7 @@ fun ListPrintersScreen(navController: NavController) {
 
         // Filter and group printers
         val filteredPrinters = printers.filter {
-            searchName.isBlank() || (it.name?.contains(searchName, ignoreCase = true) == true)
+            searchName.isBlank() || (it.name.contains(searchName, ignoreCase = true) == true)
         }
         val grouped: Map<String, List<Printers>> = when (groupBy) {
             "Nombre" -> filteredPrinters.groupBy { it.name }

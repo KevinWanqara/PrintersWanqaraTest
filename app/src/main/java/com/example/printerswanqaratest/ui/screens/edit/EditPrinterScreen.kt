@@ -69,18 +69,18 @@ fun EditPrinterScreen(printerId: String?) {
         if (printerId != null) {
             val loaded = withContext(Dispatchers.IO) { getPrinter(printerId) }
             printer = loaded
-            loaded?.let {
+            loaded.let {
                 selectedType = it.type
                 printerName = it.name
                 address = it.address ?: ""
                 port = it.port?.toString() ?: ""
-                copyNumber = it.copyNumber?.toString() ?: ""
-                characters = it.charactersNumber?.toString() ?: ""
+                copyNumber = it.copyNumber.toString()
+                characters = it.charactersNumber.toString()
             }
         }
     }
 
-    val types = listOf("USB", "BLUETOOTH", "WIFI")
+    //val types = listOf("USB", "BLUETOOTH", "WIFI")
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -245,14 +245,14 @@ fun EditPrinterScreen(printerId: String?) {
                 onStartScan = { bluetoothController.startDiscovery() },
                 onStopScan = { bluetoothController.stopDiscovery() },
                 onDeviceSelected = { device ->
-                    bluetoothDevice = device.address ?: ""
+                    bluetoothDevice = device.address
                     showBluetoothPicker = false
                 },
                 onDismiss = { showBluetoothPicker = false },
                 onPairDevice = { device, onResult ->
                     bluetoothController.pairDevice(device) { success ->
                         if (success) {
-                            bluetoothDevice = device.address ?: ""
+                            bluetoothDevice = device.address
                         }
                         onResult(success)
                     }
