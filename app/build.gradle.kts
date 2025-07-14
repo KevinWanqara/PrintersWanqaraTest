@@ -8,16 +8,17 @@ plugins {
 }
 
 android {
-    namespace = "com.example.printerswanqaratest"
+    namespace = "com.example.printerswanqara"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.printerswanqaratest"
+        applicationId = "com.example.printerswanqara"
         minSdk = 30 //Android 11 Red Velvet Cake
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
     }
 
     buildTypes {
@@ -27,6 +28,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
         }
     }
     compileOptions {
@@ -103,5 +105,6 @@ dependencies {
 
     implementation("io.coil-kt:coil-gif:2.4.0")
 
-    implementation("com.google.accompanist:accompanist-navigation-animation:0.34.0")
+    implementation(libs.accompanist.navigation.animation)
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 }

@@ -1,4 +1,6 @@
 [versions]
+accompanistNavigationAnimation = "0.34.0"
+accompanistPermissions = "0.34.0-alpha"
 agp = "8.10.1"
 escposCoffee = "4.1.0"
 escposThermalprinterAndroid = "3.3.0"
@@ -15,6 +17,8 @@ appcompat = "1.7.1"
 roomCommonJvm = "2.7.2"
 
 [libraries]
+accompanist-navigation-animation = { module = "com.google.accompanist:accompanist-navigation-animation", version.ref = "accompanistNavigationAnimation" }
+accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 escpos-coffee = { module = "com.github.anastaciocintra:escpos-coffee", version.ref = "escposCoffee" }
 escpos-thermalprinter-android = { module = "com.github.DantSu:ESCPOS-ThermalPrinter-Android", version.ref = "escposThermalprinterAndroid" }

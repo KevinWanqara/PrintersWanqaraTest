@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PrintersWanqaraTest"
+rootProject.name = "Printers Wanqara"
 include(":app")
  
