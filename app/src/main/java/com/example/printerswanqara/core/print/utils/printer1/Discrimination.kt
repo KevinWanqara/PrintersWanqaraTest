@@ -57,38 +57,44 @@ class Discrimination(
         if (commands.isEmpty()) return false
         // Parse main command, saleId, and additional commands
         val mainCommand = commands[0].trim().removePrefix("//").removePrefix("wanqaraprintermobile://").trimStart('/')
-        val saleId = commands.getOrNull(1)?.trim()
+        val transactionID = commands.getOrNull(1)?.trim()
+        println("Main command: $mainCommand, Transaction ID: $transactionID")
         val additionalCommands = if (commands.size > 2) commands.sliceArray(2 until commands.size).map { it.trimStart('/') } else emptyList()
         val allCommands = mutableListOf<String>()
         allCommands.add(mainCommand)
         allCommands.addAll(additionalCommands)
 
-        // Fetch sale data from API ONCE
-        val saleJsonObject = if (!saleId.isNullOrEmpty()) {
+        // Fetch data from API ONCE
+        val isCotizacion = mainCommand == "IMPRESION_COTIZACION"
+        println("Discrimination: isCotizacion = $isCotizacion")
+        val transactionObject = if (!transactionID.isNullOrEmpty()) {
             withContext(Dispatchers.IO) {
                 try {
-                    val salesService = ApiClient.createSalesService(context)
-                    val url = "billing/sales/$saleId"
-                    android.util.Log.d("Discrimination", "Request URL: $url")
-                    val sale = salesService.getSalesById(saleId).data
-                    android.util.Log.d("Discrimination", "Fetched sale for all jobs: $sale")
-                    android.util.Log.d("Discrimination", "Request Data: saleId=$saleId")
-                    org.json.JSONObject(com.google.gson.Gson().toJson(sale))
+                    if (isCotizacion) {
+                        val quotesService = ApiClient.createQuotesService(context)
+                        val quote = quotesService.getQuoteById(transactionID).data
+                        org.json.JSONObject(com.google.gson.Gson().toJson(quote))
+                    } else {
+                        val salesService = ApiClient.createSalesService(context)
+                        val sale = salesService.getSalesById(transactionID).data
+                        org.json.JSONObject(com.google.gson.Gson().toJson(sale))
+                    }
                 } catch (e: Exception) {
-                    android.util.Log.e("Discrimination", "Error fetching sale for all jobs with id $saleId. Request URL: billing/sales/$saleId", e)
+                    android.util.Log.e("Discrimination", "Error fetching data for all jobs with id $transactionID.", e)
                     null
                 }
             }
         } else null
+        println("Discrimination: transactionObject = $transactionObject")
 
         // Only proceed with print jobs if saleJsonObject is received
-        if (!saleId.isNullOrEmpty() && saleJsonObject == null) {
-            android.util.Log.e("Discrimination", "Sale data not received, aborting print jobs.")
+        if (!transactionID.isNullOrEmpty() && transactionObject == null) {
+            android.util.Log.e("Discrimination", "Data not received, aborting print jobs.")
             return false
         }
 
         for (command in allCommands) {
-            if (command.isEmpty() || saleId.isNullOrEmpty()) {
+            if (command.isEmpty() || transactionID.isNullOrEmpty()) {
                 android.util.Log.e("Discrimination", "Invalid command format: $command (documentType or saleId is empty)")
                 errorCount++
                 errorCommand = errorCommand.plus(command)
@@ -97,7 +103,7 @@ class Discrimination(
             setup(command, commands)
             android.util.Log.d("Discrimination", "After setup: printerBuilder is ${if (printerBuilder != null) "NOT NULL" else "NULL"}")
             // Use saleJsonObject for all jobs
-            jsonObject = saleJsonObject
+            jsonObject = transactionObject
             android.util.Log.d("Discrimination", "After API call: jsonObject is ${if (jsonObject != null) "NOT NULL" else "NULL"}")
             if (printerBuilder != null && jsonObject != null) {
                 try {
@@ -134,6 +140,21 @@ class Discrimination(
 
                         }
 
+                        "IMPRESION_COTIZACION" -> {
+                            android.util.Log.d(
+                                "Discrimination",
+                                "Sending imprimirRecibo command with documentType: $command"
+                            )
+                            if (printerBuilder != null) {
+                                printerBuilder!!.imprimirCotizacion(
+                                    jsonObject,
+                                    settingJson,
+                                    printer!!.copyNumber,
+                                    printer!!.charactersNumber,
+                                )
+                            }
+
+                        }
                         "IMPRESION_PRE_TICKET" -> {
                             android.util.Log.d(
                                 "Discrimination",

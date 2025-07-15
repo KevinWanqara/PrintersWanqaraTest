@@ -1,6 +1,7 @@
 package com.example.printerswanqara.api.sales
 
 
+import com.example.printerswanqara.api.Setting
 import com.example.printerswanqara.api.UserDetails
 
 // Main API response for a sales request
@@ -43,7 +44,7 @@ data class Sales(
     val payment_account: List<PaymentAccount>,
     val taxes: List<Tax>,
     val edocument: List<EDocument>,
-    val settings: Settings,
+    val settings: Setting,
     val summary: Summary,
     val is_debt: Boolean,
     val debt_amount: Double,
@@ -59,7 +60,7 @@ data class Sales(
     val order : OrderData,
 
 
-)
+    )
 
 data class OrderData (
     val id : String,

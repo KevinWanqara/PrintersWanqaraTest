@@ -20,7 +20,7 @@ class PrintUSBTest(private val context: Context) {
     private val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
 
 
-    operator fun invoke(): Boolean {
+    operator fun invoke(testFont :String): Boolean {
         var usbOutputStream: OutputStream? = null
         val usbReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -37,7 +37,7 @@ class PrintUSBTest(private val context: Context) {
 
                                     usbOutputStream =
                                         UsbOutputStream(usbManager, usbConnection.device)
-                                    sendPrint(usbOutputStream)
+                                    sendPrint(usbOutputStream,testFont)
 
                                 }
                             } catch (e: Exception) {
@@ -65,7 +65,7 @@ class PrintUSBTest(private val context: Context) {
                     usbManager.requestPermission(usbConnection.device, permissionIntent)
                 } else {
                     usbOutputStream = UsbOutputStream(usbManager, usbConnection.device)
-                    sendPrint(usbOutputStream)
+                    sendPrint(usbOutputStream , testFont)
                 }
                 return true
             } else {
@@ -77,12 +77,12 @@ class PrintUSBTest(private val context: Context) {
         }
     }
 
-    private fun sendPrint(usbOutputStream: OutputStream?) {
+    private fun sendPrint(usbOutputStream: OutputStream? , testFont: String) {
         if (usbOutputStream != null) {
             try {
                 val style = Style()
                 val escposCoffee = EscposCoffee(style, usbOutputStream)
-                escposCoffee.printUSBTest("B")
+                escposCoffee.printUSBTest(testFont)
             } catch (e: Exception) {
                 println(e)
             }
@@ -90,7 +90,7 @@ class PrintUSBTest(private val context: Context) {
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    fun runTest(): Boolean {
+    fun runTest(testFont : String): Boolean {
         var usbOutputStream: OutputStream? = null
         val usbReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -102,7 +102,7 @@ class PrintUSBTest(private val context: Context) {
                                 val usbManager = context.getSystemService(AppCompatActivity.USB_SERVICE) as UsbManager
                                 if (usbConnection != null && usbManager != null) {
                                     usbOutputStream = UsbOutputStream(usbManager, usbConnection.device)
-                                    sendPrint(usbOutputStream)
+                                    sendPrint(usbOutputStream ,testFont)
                                 }
                             } catch (e: Exception) {
                                 println(e)
@@ -135,7 +135,7 @@ class PrintUSBTest(private val context: Context) {
                     usbManager.requestPermission(usbConnection.device, permissionIntent)
                 } else {
                     usbOutputStream = UsbOutputStream(usbManager, usbConnection.device)
-                    sendPrint(usbOutputStream)
+                    sendPrint(usbOutputStream,testFont)
                 }
                 return true
             } else {

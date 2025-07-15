@@ -17,7 +17,7 @@ import java.util.UUID
 class PrintBluetoothTest(private val context: Context) {
 
     private var streamBluetooth: OutputStream? = null
-    operator fun invoke(mac: String): Boolean {
+    operator fun invoke(mac: String , testFont : String): Boolean {
         getOutputStream(mac)
         if (streamBluetooth == null) {
             return false
@@ -25,7 +25,7 @@ class PrintBluetoothTest(private val context: Context) {
         try {
             val style = Style()
             val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
-            escposCoffee.printBluetoothTest("B")
+            escposCoffee.printBluetoothTest(testFont)
         } catch (e: Exception) {
             CoroutineScope(Dispatchers.Main).launch {
                 Toast.makeText(context, "Error con la impresora", Toast.LENGTH_SHORT).show()

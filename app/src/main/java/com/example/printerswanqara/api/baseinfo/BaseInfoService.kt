@@ -6,10 +6,11 @@ import retrofit2.http.GET
 
 interface BaseInfoService {
     @GET("general/settings/base-info")
-    suspend fun getBaseInfo(
-
-    ): Setting
+    suspend fun getBaseInfo():   BaseInfoResponse
 }
 
 
 
+data class BaseInfoResponse(
+    val data: Setting
+)

@@ -248,16 +248,15 @@ class PrinterBuilder(private val tipo: String?) {
                 }
 
 
-                //Logo
-                val url = js.getJSONObject("subsidiary").getJSONObject("image")
-                    .optString("full_path")
-                //val url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9FumO9nuURSgAVA78eMfhYElZLtUDgvJaAA&s"
-                //val mediaMap = mapOf("imgU" to listOf(url))
-                //printMediaJob(MediaBuilder(mediaMap))
+                // Validate if the "image" key exists
+                val subsidiary = js.optJSONObject("subsidiary")
+                val image = subsidiary?.optJSONObject("image")
+                val url = image?.optString("full_path", "")
 
-
-                if(logo==true){
+                if (!url.isNullOrEmpty() && logo == true) {
                     prn.logo(url, this)
+                } else {
+                    println("Image URL is missing or invalid.")
                 }
                 if (sj != null) {
 
@@ -321,9 +320,22 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Identificación: ")
                 prn.escribirTextoSinSalto(js.getJSONObject("customer").optString("identity"))
-                prn.agregarSalto()
-                prn.escribirTextoSinSalto("Vendedor: ")
-                prn.escribirTexto(js.getJSONObject("user").optString("name"))
+
+                val user = printerConfig?.optBoolean("user")
+
+
+                if( user == true) {
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Vendedor: ")
+                    prn.escribirTextoSinSalto(js.getJSONObject("user").optString("name"))
+                }
+
+                val order = js.optJSONObject("order")
+                if (order != null) {
+                    prn.escribirTextoSinSalto("Orden: ")
+
+                    prn.escribirTexto(order.optString("sequential", "N/A"))
+                }
                 prn.LineasGuion()
                 prn.escribirTextoSinSalto("Cant Descripción")
                 prn.agregarCaracteres((caracteres - 26).coerceAtLeast(0), "")
@@ -405,6 +417,12 @@ class PrinterBuilder(private val tipo: String?) {
                     10,
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
+
+                prn.alineadoIzquierda()
+                prn.agregarSalto()
+                prn.escribirTextoSinSalto("Observacion: ")
+                prn.escribirTextoSinSalto(js.optString("observation") ?: "N/A")
+
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
@@ -439,9 +457,6 @@ class PrinterBuilder(private val tipo: String?) {
             //Font selection based on printerConfig
             val fontType = printerConfig?.optString("font") ?: "A"
             println("Font Type: $fontType")
-            val url = js.getJSONObject("subsidiary").getJSONObject("image")
-                .optString("full_path")
-
 
 
             for (i in 0 until copias) {
@@ -472,8 +487,15 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.alineadoCentro()
 
                 prn.agregarSalto()
-                if(logo==true){
+                // Validate if the "image" key exists
+                val subsidiary = js.optJSONObject("subsidiary")
+                val image = subsidiary?.optJSONObject("image")
+                val url = image?.optString("full_path", "")
+
+                if (!url.isNullOrEmpty() && logo == true) {
                     prn.logo(url, this)
+                } else {
+                    println("Image URL is missing or invalid.")
                 }
                 if (sj != null) {
                     if (sj.optString("business_name") != "null") {
@@ -519,12 +541,22 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Teléfono: ")
                 prn.escribirTextoSinSalto(js.getJSONObject("customer").getJSONArray("phones").optString(0, ""))
+                val user = printerConfig?.optBoolean("user")
+
+                if( user == true) {
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Vendedor: ")
+                    prn.escribirTextoSinSalto(js.getJSONObject("user").optString("name"))
+                }
+
                 prn.agregarSalto()
-                prn.escribirTextoSinSalto("Vendedor: ")
-                prn.escribirTextoSinSalto(js.getJSONObject("user").optString("name"))
-                prn.agregarSalto()
-                prn.escribirTextoSinSalto("Orden: ")
-                prn.escribirTexto( (js.getJSONObject("order").optString("sequential") ?: "N/A"))
+
+                val order = js.optJSONObject("order")
+                if (order != null) {
+                    prn.escribirTextoSinSalto("Orden: ")
+
+                    prn.escribirTexto(order.optString("sequential", "N/A"))
+                }
                 prn.LineasGuion()
                 prn.escribirTextoSinSalto("Cant Descripción")
                 prn.agregarCaracteres((caracteres - 26).coerceAtLeast(0), "")
@@ -575,18 +607,23 @@ class PrinterBuilder(private val tipo: String?) {
                 }
                 detallesList.sortBy { it.optDouble("rate", 0.0) }
                 // Print Subtotals sorted by rate
-                for (dl in detallesList) {
-                    prn.escribirTextoSinSalto("Subtotal " + dl.optString("rate").toDoubleOrNull()?.toInt()  + "%:")
-                    prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("base")))
-                    prn.agregarSalto()
+                val taxes = printerConfig?.optBoolean("taxes")
+                if(taxes == true){
+                    for (dl in detallesList) {
+                        prn.escribirTextoSinSalto("Subtotal " + dl.optString("rate").toDoubleOrNull()?.toInt()  + "%:")
+                        prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("base")))
+                        prn.agregarSalto()
+                    }
+                    for (dl in detallesList) {
+                        prn.escribirTextoSinSalto("IVA " + dl.optString("rate").toDoubleOrNull()?.toInt() + "%:")
+                        prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("amount")))
+                        prn.agregarSalto()
+                    }
                 }
 
+
 // Print IVA sorted by rate
-                for (dl in detallesList) {
-                    prn.escribirTextoSinSalto("IVA " + dl.optString("rate").toDoubleOrNull()?.toInt() + "%:")
-                    prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("amount")))
-                    prn.agregarSalto()
-                }
+
                 //agregar total
                 prn.escribirTextoSinSalto("Total:")
                 prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
@@ -601,21 +638,270 @@ class PrinterBuilder(private val tipo: String?) {
                     10,
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
-/*
+                prn.agregarSalto()
+                prn.alineadoIzquierdaForce(js.optString("observation") ?: "N/A")
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
                 }
-                */
-                prn.agregarSalto()
+
+                if(tipo == PrinterType.BLUETOOTH.type) {
+                    prn.feed(6)
+                }else {
+                    if (lineSpacing == true ) {
+                        println("Setting line spacing applied")
+                        prn.feed(7)
+                    }else {
+                        println("Setting default line spacing")
+
+                        prn.feed(14)
+                    }
+                }
+
+
+
+                prn.cortar()
+
+                println("Comandos")
+                println(prn.getTrabajo().toString())
+                enviarImprimir(prn.getTrabajo())
+
+
+            }
+
+
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        }
+
+    }
+
+    suspend fun imprimirCotizacion(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int) {
+
+        println("Imprimiendo cotizacion")
+        println(js.toString())
+        try {
+            if (js == null) return
+            var detalles: JSONArray
+            var jo: JSONObject
+            val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
+            println("Printer Config: $printerConfig")
+
+            val prn = PrinterHelpers(caracteres, copias)
+            val lineSpacing = printerConfig?.optBoolean("line_spacing")
+            val logo = printerConfig?.optBoolean("logo")
+            //Font selection based on printerConfig
+            val fontType = printerConfig?.optString("font") ?: "A"
+            println("Font Type: $fontType")
+
+
+            for (i in 0 until copias) {
+                println("Imprimiendo copia $i")
+                // imprimir
+                prn.iniciar()
+                //prn.dobleAltoOn()
+
+                when (fontType.uppercase()) {
+                    "A" -> prn.setFontA() //Normal
+                    "B" -> prn.setFontB() //Pequeña
+                    "AA" -> prn.setFontAA() //Extra Grande
+                    "BB" -> prn.setFontBB() //Grande
+
+                }
+
+
 
                 if (lineSpacing == true ) {
                     println("Setting line spacing applied")
-                    prn.feed(7)
+                    prn.lineHeight2()
                 }else {
                     println("Setting default line spacing")
-                    prn.feed(14)
+                    prn.lineHeight()
                 }
+
+
+                prn.alineadoCentro()
+
+                prn.agregarSalto()
+                // Validate if the "image" key exists
+                val subsidiary = js.optJSONObject("subsidiary")
+                val image = subsidiary?.optJSONObject("image")
+                val url = image?.optString("full_path", "")
+
+                if (!url.isNullOrEmpty() && logo == true) {
+                    prn.logo(url, this)
+                } else {
+                    println("Image URL is missing or invalid.")
+                }
+                if (sj != null) {
+                    if (sj.optString("business_name") != "null") {
+                        prn.escribirTextoSinSalto(sj.optString("business_name"))
+                        prn.agregarSalto()
+                    }
+                    prn.escribirTextoSinSalto(
+                        js.getJSONObject("subsidiary").optString("commercial_name")
+                    )
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("RUC: " + sj.optString("ruc"))
+                    prn.agregarSalto()
+
+                    prn.escribirTextoSinSalto("Dirección: " + sj.optString("address"))
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto(
+                        "Sucursal: " + js.getJSONObject("subsidiary").optString("address")
+                    )
+                    prn.agregarSalto()
+                    if (sj.optString("phone") != "null") {
+                        prn.escribirTextoSinSalto("Teléfono: " + sj.optString("phone"))
+                    }
+                    prn.agregarSalto()
+                    if (sj.optString("email") != "null") prn.escribirTextoSinSalto(
+                        "Correo: " + sj.optString(
+                            "email"
+                        )
+                    )
+                }
+                prn.agregarSalto()
+                prn.escribirTextoSinSalto("Cotización ")
+                prn.escribirTextoSinSalto(js.optString("number"))
+                prn.agregarSalto()
+                prn.alineadoIzquierda()
+                prn.escribirTextoSinSalto("Fecha: ")
+                prn.escribirTextoSinSalto(js.optString("date"))
+                prn.agregarSalto()
+                val person = js.optJSONObject("person")
+                if (person != null) {
+                    prn.escribirTextoSinSalto("Cliente: ")
+                    prn.escribirTextoSinSalto(person.optString("name", "N/A"))
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Identificación: ")
+                    prn.escribirTextoSinSalto(person.optString("identity", "N/A"))
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Teléfono: ")
+                    prn.escribirTextoSinSalto(person.optJSONArray("phones")?.optString(0, "N/A") ?: "N/A")
+                }
+                val user = printerConfig?.optBoolean("user")
+
+
+                if( user == true) {
+                    val userData = js.optJSONObject("user")
+                    if(userData != null) {
+
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Vendedor: ")
+                    prn.escribirTextoSinSalto(js.getJSONObject("user").optString("name"))
+                    }
+                }
+
+                prn.agregarSalto()
+
+                val order = js.optJSONObject("order")
+                if (order != null) {
+                    prn.escribirTextoSinSalto("Orden: ")
+
+                    prn.escribirTexto(order.optString("sequential", "N/A"))
+                }
+                prn.LineasGuion()
+                prn.escribirTextoSinSalto("Cant Descripción")
+                prn.agregarCaracteres((caracteres - 26).coerceAtLeast(0), "")
+                prn.escribirTextoSinSalto("P.U. Total")
+                prn.agregarSalto()
+                prn.LineasIgual()
+                detalles = js.getJSONArray("details")
+                for (j in 0 until detalles.length()) {
+                    jo = detalles.getJSONObject(j)
+
+                    val product = jo.getJSONObject("product")
+                    val basePrice = product.optDouble("price")
+
+                    val taxesArray = product.optJSONArray("taxes")
+                    val taxRate = if (taxesArray != null && taxesArray.length() > 0) {
+                        taxesArray.getJSONObject(0).optDouble("rate", 0.0)
+                    } else {
+                        0.0
+                    }
+                    val taxedPrice = basePrice * (1 + taxRate / 100)
+
+                    prn.agregarTexto(
+                        prn.lineaDetails(
+
+                            jo.optString("amount"),
+                            jo.getJSONObject("product").optString("name"),
+                            taxedPrice.toString(),
+                            jo.optString("total_amount"),
+                            caracteres
+                        )
+                    )
+                }
+                prn.LineasIgual()
+                //Summary
+                prn.alineadoDerecha()
+                if (js.has("discount")) {
+                    prn.escribirTextoSinSalto("Descuentos:")
+                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("discount")))
+                    prn.agregarSalto()
+                }
+                prn.escribirTextoSinSalto("Subtotal:")
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("subtotal")))
+                prn.agregarSalto()
+
+                var taxesData = js.optJSONArray("taxes")
+                if(taxesData != null ){
+
+                detalles = js.getJSONArray("taxes")
+                val detallesList = mutableListOf<JSONObject>()
+                for (j in 0 until detalles.length()) {
+                    detallesList.add(detalles.getJSONObject(j))
+                }
+                detallesList.sortBy { it.optDouble("rate", 0.0) }
+                // Print Subtotals sorted by rate
+                val taxes = printerConfig?.optBoolean("taxes")
+                if(taxes == true){
+                    for (dl in detallesList) {
+                        prn.escribirTextoSinSalto("Subtotal " + dl.optString("rate").toDoubleOrNull()?.toInt()  + "%:")
+                        prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("base")))
+                        prn.agregarSalto()
+                    }
+                    for (dl in detallesList) {
+                        prn.escribirTextoSinSalto("IVA " + dl.optString("rate").toDoubleOrNull()?.toInt() + "%:")
+                        prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("amount")))
+                        prn.agregarSalto()
+                    }
+                }
+                }
+
+                // Print IVA sorted by rate
+
+
+                //Agregar total
+                prn.escribirTextoSinSalto("Total:")
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
+                prn.agregarSalto()
+                prn.escribirTextoSinSalto("Entrega:")
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
+
+
+
+                prn.agregarSalto()
+                prn.alineadoIzquierdaForce(js.optString("observation") ?: "N/A")
+                val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
+                for (j in 0 until line_breaks) {
+                    prn.agregarSalto()
+                }
+
+                if(tipo == PrinterType.BLUETOOTH.type) {
+                    prn.feed(6)
+                }else {
+                    if (lineSpacing == true ) {
+                        println("Setting line spacing applied")
+                        prn.feed(7)
+                    }else {
+                        println("Setting default line spacing")
+
+                        prn.feed(14)
+                    }
+                }
+
 
 
                 prn.cortar()
@@ -786,7 +1072,6 @@ class PrinterBuilder(private val tipo: String?) {
     }
 
 
-
     suspend fun imprimirComandas(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int, printCode: String) {
         try {
             if (js == null) return
@@ -898,519 +1183,6 @@ class PrinterBuilder(private val tipo: String?) {
 
     }
 
-
-
-    fun imprimirFacturPreimpresa(
-        js: JSONObject?,
-        copias: Int,
-        caracteres: Int,
-        programa: String
-    ) {
-        try {
-            if (js == null) return
-
-            // reutilizables
-            var detalles: JSONArray
-            var items: Int
-            var jo: JSONObject
-
-            // imprimir
-            val prn = PrinterHelpers(caracteres, copias)
-            prn.iniciar()
-            prn.setFontB()
-            prn.alineadoIzquierda()
-            if (programa == "RESTAURANTES") prn.LineasIgualTexto(" PEDIDO " + js.optString("numPedidoRest") + " ")
-            prn.escribirTextoSinSalto("Transacción Nº: ")
-            prn.escribirTextoSinSalto(js.optString("numeroDocumentoOv"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Fecha: ")
-            prn.escribirTextoSinSalto(js.optString("fechaEmisionOv"))
-            prn.agregarSalto()
-            if (js.has("salonRest")) {
-                if (js.optString("salonRest") != "null") prn.agregarTexto("Zona: " + js.optString("salonRest"))
-            }
-            if (js.has("numMesaRest")) {
-                if (js.optString("numMesaRest") != "null") prn.agregarTexto(
-                    "Mesa: " + js.optString(
-                        "numMesaRest"
-                    )
-                )
-            }
-            prn.escribirTextoSinSalto("Cliente: ")
-            if (js.optString("tipoIdentificacionCl") == "RUC") {
-                var nombreComercial = ""
-                if (js.optString("apellidosCl") != "null") {
-                    nombreComercial = "(" + js.optString("apellidosCl") + ")"
-                }
-                prn.agregarCaracteres(caracteres - 9, js.optString("nombresCl") + nombreComercial)
-            } else {
-                prn.agregarCaracteres(
-                    caracteres - 9,
-                    js.optString("apellidosCl") + " " + js.optString("nombresCl")
-                )
-            }
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto(js.optString("tipoIdentificacionCl") + ": ")
-            prn.escribirTextoSinSalto(js.optString("identificacionCl"))
-            prn.agregarSalto()
-            if (js.optString("telefonoCl") != "null") {
-                prn.escribirTextoSinSalto("Teléfono: ")
-                prn.escribirTextoSinSalto(js.optString("telefonoCl"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("Dirección: ")
-            prn.escribirTextoSinSalto(js.optString("direccionFacturacionCl"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Cant Descripción")
-            prn.agregarCaracteres(caracteres - 26, "")
-            prn.escribirTextoSinSalto("P.U. Total")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            detalles = js.getJSONArray("listaDetalleOrdenVenta")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.agregarTexto(
-                    prn.lineaVenta(
-                        jo.optString("cantidadDet"),
-                        jo.optString("descripcionDet"),
-                        jo.optString("precioUnitarioDet"),
-                        jo.optString("precioTotalImpuestoDet"),
-                        jo.getJSONArray("detalleImpuesto"),
-                        caracteres
-                    )
-                )
-            }
-            prn.LineasIgual()
-            prn.alineadoDerecha()
-            prn.setFontA()
-            if (js.has("descuentoOv")) {
-                if (js.getDouble("descuentoOv") > 0) {
-                    prn.escribirTextoSinSalto("Descuentos:")
-                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("descuentoOv")))
-                    prn.agregarSalto()
-                }
-            }
-            prn.escribirTextoSinSalto("Subtotal:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("subTotalOv")))
-            prn.agregarSalto()
-            detalles = js.getJSONArray("listaImpuesto")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.escribirTextoSinSalto("Subtotal " + jo.optString("porcentajeIm") + "%:")
-                prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("subTotalIm")))
-                prn.agregarSalto()
-            }
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                if (jo.getDouble("porcentajeIm") > 0) {
-                    prn.escribirTextoSinSalto(jo.optString("nombreIm") + " " + jo.optString("porcentajeIm") + "%:")
-                    prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("valorIm")))
-                    prn.agregarSalto()
-                }
-            }
-            //agregar total
-            prn.escribirTextoSinSalto("Total:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("totalPagarOv")))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Entrega:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("totalEntregaOv")))
-            prn.agregarSalto()
-            if (js.getDouble("totalDiferenciaOv") < 0) {
-                prn.escribirTextoSinSalto("Deuda:")
-            } else {
-                prn.escribirTextoSinSalto("Cambio:")
-            }
-            prn.agregarCaracteresDerecha(
-                10,
-                df.format(js.getDouble("totalDiferenciaOv")).replace("-", "")
-            )
-            prn.agregarSalto()
-            prn.agregarSalto()
-            prn.setFontB()
-            detalles = js.getJSONArray("listaFormaPago")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.alineadoCentro()
-                prn.escribirTextoSinSalto(
-                    "Pago en " + jo.optString("nombreFp") + "= " + df.format(
-                        jo.getDouble("valorFp")
-                    )
-                )
-                prn.agregarSalto()
-                prn.alineadoIzquierda()
-            }
-            if (js.has("observacionOv")) {
-                if (js.optString("observacionOv") != "null") {
-                    prn.agregarTexto("Observaciones:")
-                    prn.agregarTexto(js.optString("observacionOv"))
-                }
-            }
-            prn.escribirTextoSinSalto("Su comprobante electrónico ha sido generado correctamente")
-            if (js.optString("correoCl") != "null") {
-                prn.escribirTextoSinSalto(" y ha sido enviado al correo: " + js.optString("correoCl"))
-            }
-            prn.escribirTextoSinSalto(". Recuerde que también puede consultar su comprobante en el portal del SRI https://srienlinea.sri.gob.ec/ dentro de las próximas 24 horas con la siguiente clave de acceso:")
-            prn.agregarSalto()
-            prn.agregarSalto()
-            prn.alineadoCentro()
-            prn.setFontA()
-            prn.escribirTextoSinSalto(js.optString("claveAccesoOv"))
-            prn.agregarSalto()
-            prn.feedFinal()
-            prn.cortar()
-            if (js.optString("tipoVentaRest") == "PEDIDO TELEFÓNICO") {
-                prn.lineHeight2()
-                prn.setFontA()
-                prn.alineadoCentro()
-                prn.dobleAltoOn()
-                //prn.lineHeight();
-                prn.agregarTexto("Factura Electrónica Nº:")
-                prn.escribirTextoSinSalto(js.optString("numeroDocumentoOv"))
-                prn.agregarSalto()
-                prn.dobleAltoOff()
-                prn.negritaOff()
-                prn.alineadoIzquierda()
-                prn.setFontB()
-                if (programa == "RESTAURANTES") prn.LineasIgualTexto(" PEDIDO " + js.optString("numPedidoRest") + " ")
-                prn.setFontA()
-                prn.escribirTextoSinSalto("Fecha: ")
-                prn.escribirTextoSinSalto(js.optString("fechaEmisionOv"))
-                prn.agregarSalto()
-                if (js.has("salonRest")) {
-                    if (js.optString("salonRest") != "null") prn.agregarTexto(
-                        "Zona: " + js.optString(
-                            "salonRest"
-                        )
-                    )
-                }
-                if (js.has("numMesaRest")) {
-                    if (js.optString("numMesaRest") != "null") prn.agregarTexto(
-                        "Mesa: " + js.optString(
-                            "numMesaRest"
-                        )
-                    )
-                }
-                prn.escribirTextoSinSalto("FACTURADO A: ")
-                if (js.optString("tipoIdentificacionCl") == "RUC") {
-                    var nombreComercial = ""
-                    if (js.optString("apellidosCl") != "null") {
-                        nombreComercial = "(" + js.optString("apellidosCl") + ")"
-                    }
-                    prn.agregarCaracteres(
-                        caracteres - 9,
-                        js.optString("nombresCl") + nombreComercial
-                    )
-                } else {
-                    prn.agregarCaracteres(
-                        caracteres - 9,
-                        js.optString("apellidosCl") + " " + js.optString("nombresCl")
-                    )
-                }
-                prn.agregarSalto()
-                prn.escribirTextoSinSalto(js.optString("tipoIdentificacionCl") + ": ")
-                prn.escribirTextoSinSalto(js.optString("identificacionCl"))
-                prn.agregarSalto()
-                prn.escribirTextoSinSalto("Teléfono: ")
-                prn.escribirTextoSinSalto(js.optString("telefonoCl"))
-                prn.agregarSalto()
-                prn.escribirTextoSinSalto("Dirección: ")
-                prn.escribirTextoSinSalto(js.optString("direccionFacturacionCl"))
-                prn.agregarSalto()
-                prn.alineadoCentro()
-                prn.agregarSalto()
-                prn.agregarTexto("=====================")
-                prn.dobleAltoOn()
-                prn.agregarTexto("OBSERVACIONES DE ENTREGA")
-                prn.dobleAltoOff()
-                prn.alineadoIzquierda()
-                prn.agregarSalto()
-                prn.escribirTextoSinSalto(js.optString("observacionRest"))
-                prn.agregarSalto()
-                prn.negritaOn()
-                prn.agregarTexto(js.optString("tipoEntregaRest"))
-                prn.negritaOff()
-                prn.feedFinal()
-                prn.cortar()
-            }
-            enviarImprimir(prn.getTrabajo())
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun imprimirCotizacionResumida(js: JSONObject?, copias: Int, caracteres: Int) {
-        try {
-            if (js == null) return
-
-            // reutilizables
-            var detalles: JSONArray
-            var items: Int
-            var jo: JSONObject
-
-            // imprimir
-            val prn = PrinterHelpers(caracteres, copias)
-            prn.lineHeight2()
-            prn.alineadoCentro()
-            prn.dobleAltoOn()
-            //prn.lineHeight();
-            prn.agregarTexto("Cotización")
-            prn.agregarSalto()
-            prn.dobleAltoOff()
-            prn.setFontA()
-            prn.negritaOff()
-            prn.escribirTextoSinSalto(js.optString("razonSociallEm"))
-            prn.agregarSalto()
-            if (js.optString("nombreComercialEm") != "null") {
-                prn.escribirTextoSinSalto(js.optString("nombreComercialEm"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("RUC: " + js.optString("rucEm"))
-            prn.agregarSalto()
-            if (js.getBoolean("obligadoLlevarContabilidadEm")) prn.agregarTexto("Obligado a llevar Contabilidad")
-            prn.setFontB()
-            prn.agregarTexto("Dirección: " + js.optString("direccionEm"))
-            if (js.optString("direccionSucursalEm") != "S/N") prn.agregarTexto(
-                "Sucursal: " + js.optString(
-                    "direccionSucursalEm"
-                )
-            )
-            if (js.optString("telefonoEm") != "null") prn.agregarTexto("Teléfono: " + js.optString("telefonoEm"))
-            if (js.optString("correoEm") != "null") prn.agregarTexto("Correo: " + js.optString("correoEm"))
-            prn.agregarSalto()
-            prn.alineadoIzquierda()
-            prn.escribirTextoSinSalto("Trans Nº: ")
-            prn.escribirTextoSinSalto(js.optString("numeroDocumentoOv"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Fecha: ")
-            prn.escribirTextoSinSalto(js.optString("fechaEmisionOv"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Cliente: ")
-            if (js.optString("tipoIdentificacionCl") == "RUC") {
-                var nombreComercial = ""
-                if (js.optString("apellidosCl") != "null") {
-                    nombreComercial = "(" + js.optString("apellidosCl") + ")"
-                }
-                prn.agregarCaracteres(caracteres - 9, js.optString("nombresCl") + nombreComercial)
-            } else {
-                prn.agregarCaracteres(
-                    caracteres - 9,
-                    js.optString("apellidosCl") + " " + js.optString("nombresCl")
-                )
-            }
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto(js.optString("tipoIdentificacionCl") + ": ")
-            prn.escribirTextoSinSalto(js.optString("identificacionCl"))
-            prn.agregarSalto()
-            if (js.optString("telefonoCl") != "null") {
-                prn.escribirTextoSinSalto("Teléfono: ")
-                prn.escribirTextoSinSalto(js.optString("telefonoCl"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("Dirección: ")
-            prn.escribirTextoSinSalto(js.optString("direccionFacturacionCl"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Cant Descripción")
-            prn.agregarCaracteres(caracteres - 26, "")
-            prn.escribirTextoSinSalto("P.U. Total")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            detalles = js.getJSONArray("listaDetalleOrdenVenta")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.agregarTexto(
-                    prn.lineaVentaDobleResumida(
-                        jo.optString("cantidadDet"),
-                        jo.optString("descripcionDet"),
-                        jo.optString("precioUnitarioDet"),
-                        jo.optString("precioTotalDet"),
-                        jo.getJSONArray("detalleImpuesto"),
-                        caracteres
-                    )
-                )
-            }
-            prn.LineasIgual()
-            prn.alineadoDerecha()
-            prn.setFontA()
-            if (js.getDouble("descuentoOv") > 0) {
-                prn.escribirTextoSinSalto("Descuentos:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("descuentoOv")))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("Subtotal:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("subTotalOv")))
-            prn.agregarSalto()
-            detalles = js.getJSONArray("listaImpuesto")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.escribirTextoSinSalto("Subtotal " + jo.optString("porcentajeIm") + "%:")
-                prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("subTotalIm")))
-                prn.agregarSalto()
-            }
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                if (jo.getDouble("porcentajeIm") > 0) {
-                    prn.escribirTextoSinSalto(jo.optString("nombreIm") + " " + jo.optString("porcentajeIm") + "%:")
-                    prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("valorIm")))
-                    prn.agregarSalto()
-                }
-            }
-            //agregar total
-            prn.escribirTextoSinSalto("Total:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("totalPagarOv")))
-            prn.agregarSalto()
-            prn.setFontB()
-            prn.alineadoIzquierda()
-            if (js.has("observacionOv")) {
-                if (js["observacionOv"].toString() !== "null") {
-                    prn.agregarTexto("Observaciones:")
-                    prn.agregarTexto(js.optString("observacionOv"))
-                }
-            }
-            prn.agregarSalto()
-            prn.feed(7)
-            prn.cortar()
-            enviarImprimir(prn.getTrabajo())
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun imprimirCotizacionDetallada(js: JSONObject?, copias: Int, caracteres: Int) {
-        try {
-            if (js == null) return
-
-            // reutilizables
-            var detalles: JSONArray
-            var items: Int
-            var jo: JSONObject
-
-            // imprimir
-            val prn = PrinterHelpers(caracteres, copias)
-            prn.lineHeight2()
-            prn.alineadoCentro()
-            prn.dobleAltoOn()
-            //prn.lineHeight();
-            prn.agregarTexto("Cotización")
-            prn.agregarSalto()
-            prn.dobleAltoOff()
-            prn.setFontA()
-            prn.negritaOff()
-            prn.escribirTextoSinSalto(js.optString("razonSociallEm"))
-            prn.agregarSalto()
-            if (js.optString("nombreComercialEm") != "null") {
-                prn.escribirTextoSinSalto(js.optString("nombreComercialEm"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("RUC: " + js.optString("rucEm"))
-            prn.agregarSalto()
-            if (js.getBoolean("obligadoLlevarContabilidadEm")) prn.agregarTexto("Obligado a llevar Contabilidad")
-            prn.setFontB()
-            prn.agregarTexto("Dirección: " + js.optString("direccionEm"))
-            if (js.optString("direccionSucursalEm") != "S/N") prn.agregarTexto(
-                "Sucursal: " + js.optString(
-                    "direccionSucursalEm"
-                )
-            )
-            if (js.optString("telefonoEm") != "null") prn.agregarTexto("Teléfono: " + js.optString("telefonoEm"))
-            if (js.optString("correoEm") != "null") prn.agregarTexto("Correo: " + js.optString("correoEm"))
-            prn.agregarSalto()
-            prn.alineadoIzquierda()
-            prn.escribirTextoSinSalto("Trans Nº: ")
-            prn.escribirTextoSinSalto(js.optString("numeroDocumentoOv"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Fecha: ")
-            prn.escribirTextoSinSalto(js.optString("fechaEmisionOv"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Cliente: ")
-            if (js.optString("tipoIdentificacionCl") == "RUC") {
-                var nombreComercial = ""
-                if (js.optString("apellidosCl") != "null") {
-                    nombreComercial = "(" + js.optString("apellidosCl") + ")"
-                }
-                prn.agregarCaracteres(caracteres - 9, js.optString("nombresCl") + nombreComercial)
-            } else {
-                prn.agregarCaracteres(
-                    caracteres - 9,
-                    js.optString("apellidosCl") + " " + js.optString("nombresCl")
-                )
-            }
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto(js.optString("tipoIdentificacionCl") + ": ")
-            prn.escribirTextoSinSalto(js.optString("identificacionCl"))
-            prn.agregarSalto()
-            if (js.optString("telefonoCl") != "null") {
-                prn.escribirTextoSinSalto("Teléfono: ")
-                prn.escribirTextoSinSalto(js.optString("telefonoCl"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("Dirección: ")
-            prn.escribirTextoSinSalto(js.optString("direccionFacturacionCl"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Cant Descripción")
-            prn.agregarCaracteres(caracteres - 26, "")
-            prn.escribirTextoSinSalto("P.U. Total")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            detalles = js.getJSONArray("listaDetalleOrdenVenta")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.agregarTexto(
-                    prn.lineaVentaDoble(
-                        jo.optString("cantidadDet"),
-                        jo.optString("descripcionDet"),
-                        jo.optString("precioUnitarioDet"),
-                        jo.optString("precioTotalDet"),
-                        jo.getJSONArray("detalleImpuesto"),
-                        caracteres
-                    )
-                )
-            }
-            prn.LineasIgual()
-            prn.alineadoDerecha()
-            prn.setFontA()
-            if (js.getDouble("descuentoOv") > 0) {
-                prn.escribirTextoSinSalto("Descuentos:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("descuentoOv")))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("Subtotal:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("subTotalOv")))
-            prn.agregarSalto()
-            detalles = js.getJSONArray("listaImpuesto")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.escribirTextoSinSalto("Subtotal " + jo.optString("porcentajeIm") + "%:")
-                prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("subTotalIm")))
-                prn.agregarSalto()
-            }
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                if (jo.getDouble("porcentajeIm") > 0) {
-                    prn.escribirTextoSinSalto(jo.optString("nombreIm") + " " + jo.optString("porcentajeIm") + "%:")
-                    prn.agregarCaracteresDerecha(10, df.format(jo.getDouble("valorIm")))
-                    prn.agregarSalto()
-                }
-            }
-            //agregar total
-            prn.escribirTextoSinSalto("Total:")
-            prn.agregarCaracteresDerecha(10, df.format(js.getDouble("totalPagarOv")))
-            prn.agregarSalto()
-            prn.setFontB()
-            prn.alineadoIzquierda()
-            if (js.has("observacionOv")) {
-                if (js["observacionOv"].toString() !== "null") {
-                    prn.agregarTexto("Observaciones:")
-                    prn.agregarTexto(js.optString("observacionOv"))
-                }
-            }
-            prn.agregarSalto()
-            prn.feedFinal()
-            prn.cortar()
-            enviarImprimir(prn.getTrabajo())
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
-    }
 
 
     // FUNCIONES
@@ -1592,33 +1364,6 @@ class PrinterBuilder(private val tipo: String?) {
         enviarImprimir(prn.getTrabajo())
     }
 
-    fun imprimirTest(tipoTransaccion: String) {
-        val prn = PrinterHelpers(100, 1)
-        prn.iniciar()
-        prn.setFontA()
-        prn.lineHeight2()
-        prn.negritaOff()
-        prn.alineadoIzquierda()
-        prn.agregarTexto("font A")
-        prn.agregarSalto()
-        prn.agregarTexto("000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-")
-        prn.agregarSalto()
-        prn.setFontB()
-        prn.agregarTexto("font B")
-        prn.agregarSalto()
-        prn.agregarTexto("000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-000000000-")
-        prn.agregarSalto()
-        prn.alineadoCentro()
-        prn.setFontA()
-        prn.agregarTexto("************************************")
-        prn.agregarTexto("Cuente los caracteres que entran en la primera línea de texto y coloque el valor en la columa correspondiente")
-        prn.agregarTexto("************************************")
-        prn.agregarSalto()
-        prn.agregarTexto(tipoTransaccion)
-        prn.feedFinal()
-        prn.cortar()
-        enviarImprimir(prn.getTrabajo())
-    }
 
     fun enviarImprimir(trabajo: String) {
         println("Enviando trabajo de impresión...")

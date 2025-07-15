@@ -78,7 +78,7 @@ fun ListPrintersScreen(navController: NavController) {
         withContext(Dispatchers.IO) {
             refreshPrinters()
             try {
-                val response = baseInfoService.getBaseInfo() // Replace with the actual method
+                val response = baseInfoService.getBaseInfo().data // Replace with the actual method
                 println("Saving Base Info from list: $response")
                 AppStorage.saveSettings(context, response) // Save the data locally
             } catch (e: Exception) {

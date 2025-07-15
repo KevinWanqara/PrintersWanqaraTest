@@ -49,6 +49,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Settings
 import com.example.printerswanqara.api.ApiClient
 
 class MainActivity : ComponentActivity() {
@@ -73,7 +74,7 @@ class MainActivity : ComponentActivity() {
 
                     if (isLoggedIn) {
                         try {
-                            val response = baseInfoService.getBaseInfo() // Replace with the actual method
+                            val response = baseInfoService.getBaseInfo().data // Replace with the actual method
                             println("Saving Base Info: $response")
                             AppStorage.saveSettings(context, response) // Save the data locally
                         } catch (e: Exception) {
@@ -205,7 +206,17 @@ class MainActivity : ComponentActivity() {
 
                                                 }
                                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                                DropdownMenuItem(
 
+                                                    text = { Text("Configuraciones") },
+                                                    leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = "configs") },
+                                                    onClick = {
+                                                        profileMenuExpanded = false
+                                                        navController.navigate("configure_printer")
+
+                                                    }
+
+                                                )
                                                 DropdownMenuItem(
 
                                                     text = { Text("Cerrar Sesión") },

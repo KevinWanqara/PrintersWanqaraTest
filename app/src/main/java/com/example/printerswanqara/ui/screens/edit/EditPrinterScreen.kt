@@ -64,6 +64,8 @@ fun EditPrinterScreen(printerId: String?) {
     val pairedDevices by bluetoothController.pairedDevices.collectAsState()
     val scannedDevices by bluetoothController.scannedDevices.collectAsState()
     var bluetoothDevice by remember { mutableStateOf("") }
+    var testFont by remember { mutableStateOf("A") } // Default to "A"
+
     // Load printer data
     LaunchedEffect(printerId) {
         if (printerId != null) {
@@ -216,15 +218,15 @@ fun EditPrinterScreen(printerId: String?) {
                     when (selectedType) {
                         PrinterType.BLUETOOTH.type -> {
                             android.util.Log.d("AddPrinterScreen", "Calling PrintBluetoothTest from button")
-                            PrintBluetoothTest(context).invoke(bluetoothDevice)
+                            PrintBluetoothTest(context).invoke(bluetoothDevice,testFont)
                         }
                         PrinterType.USB.type -> {
                             android.util.Log.d("AddPrinterScreen", "Calling PrintUSBTest from button")
-                            PrintUSBTest(context).invoke()
+                            PrintUSBTest(context).invoke(testFont)
                         }
                         PrinterType.WIFI.type -> {
                             android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest from button with ip=$address port=$port")
-                            PrintWifiTest(address, port.toInt(), "B").invoke()
+                            PrintWifiTest(address, port.toInt(), testFont).invoke()
                         }
                     }
                 },colors = ButtonDefaults.buttonColors(containerColor = Primary)) {

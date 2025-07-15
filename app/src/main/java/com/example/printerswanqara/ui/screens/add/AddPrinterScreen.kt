@@ -97,7 +97,7 @@ fun AddPrinterScreen(navController: NavController) {
     val scannedDevices by bluetoothController.scannedDevices.collectAsState()
     val documentType = remember { mutableStateOf("") }
     val selectedDocTypes = remember { mutableStateOf(setOf<String>()) }
-
+    var testFont by remember { mutableStateOf("A") } // Default to "A"
 
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
@@ -341,22 +341,63 @@ fun AddPrinterScreen(navController: NavController) {
                 }
 
             }
-            // Step 2: Character selection
+
+            //Step 2 : Test Font
             if (step == 2) {
+
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Text("Fuente para Test:")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Button(
+                            onClick = { testFont = "A" },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (testFont == "A") Primary else Color.LightGray
+                            )
+                        ) {
+                            Text("A (Normal)", color = if (testFont == "A") Color.White else Color.Black)
+                        }
+                        Button(
+                            onClick = { testFont = "B" },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (testFont == "B") Primary else Color.LightGray
+                            )
+                        ) {
+                            Text("B (Pequeña)", color = if (testFont == "B") Color.White else Color.Black)
+                        }
+                    }
+                    Spacer(modifier = Modifier.weight(1f, fill = true))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        OutlinedButton(
+                            onClick = { step = 1 },
+                            border = BorderStroke(2.dp, Primary),
+                        ) { Text("Atras") }
+                        Button(
+                            onClick = { step = 3 },
+                            enabled = testFont.isNotEmpty(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) { Text("Siguiente") }
+                    }
+                }
+            }
+            // Step 2: Character selection
+            if (step == 3) {
                 var testTriggered by remember { mutableStateOf(false) }
                 LaunchedEffect(step, selectedMode) {
                     if (!testTriggered) {
                         when (selectedMode) {
                             PrinterType.BLUETOOTH -> {
                                 android.util.Log.d("AddPrinterScreen", "Calling PrintBluetoothTest on step load")
-                                PrintBluetoothTest(context).invoke(bluetoothDevice)
+                                PrintBluetoothTest(context).invoke(bluetoothDevice , testFont )
                             }
                             PrinterType.USB -> {
                                 android.util.Log.d("AddPrinterScreen", "Calling PrintUSBTest on step load")
                                 //could fail on non tiramisu sdk
                                 //TODO handle this for legacy devices
 
-                                val result = PrintUSBTest(context).runTest()
+                                val result = PrintUSBTest(context).runTest(testFont)
                                 if (!result) {
                                     snackbarHostState.showSnackbar("Error al conectar con la impresora USB")
                                 }
@@ -401,15 +442,15 @@ fun AddPrinterScreen(navController: NavController) {
                             when (selectedMode) {
                                 PrinterType.BLUETOOTH -> {
                                     android.util.Log.d("AddPrinterScreen", "Calling PrintBluetoothTest from button")
-                                    PrintBluetoothTest(context).invoke(bluetoothDevice)
+                                    PrintBluetoothTest(context).invoke(bluetoothDevice, testFont)
                                 }
                                 PrinterType.USB -> {
                                     android.util.Log.d("AddPrinterScreen", "Calling PrintUSBTest from button")
-                                    PrintUSBTest(context).invoke()
+                                    PrintUSBTest(context).invoke(testFont)
                                 }
                                 PrinterType.WIFI -> {
                                     android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest from button with ip=$wifiIp port=$wifiPort")
-                                    PrintWifiTest(wifiIp, wifiPort, "B").invoke()
+                                    PrintWifiTest(wifiIp, wifiPort, testFont).invoke()
                                 }
                             }
                         },
@@ -423,17 +464,17 @@ fun AddPrinterScreen(navController: NavController) {
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        OutlinedButton(onClick = { step = 1 },   border = BorderStroke(2.dp, Primary)) { Text("Atras") }
+                        OutlinedButton(onClick = { step = 2 },   border = BorderStroke(2.dp, Primary)) { Text("Atras") }
                         Button(
-                            onClick = { step = 3 },
+                            onClick = { step = 4 },
                             enabled = characters > 0,
                             colors = ButtonDefaults.buttonColors(containerColor = Primary)
                         ) { Text("Siguiente") }
                     }
                 }
             }
-            // Step 3: Copy number
-            if (step == 3) {
+            // Step 4: Copy number
+            if (step == 4) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Text("Numero de copias:")
                     OutlinedTextField(
@@ -448,15 +489,15 @@ fun AddPrinterScreen(navController: NavController) {
                             border = BorderStroke(2.dp, Primary),
                             ) { Text("Atras") }
                         Button(
-                            onClick = { step = 4 },
+                            onClick = { step = 5 },
                             enabled = copyNumber > 0,
                             colors = ButtonDefaults.buttonColors(containerColor = Primary)
                         ) { Text("Siguiente") }
                     }
                 }
             }
-            // Step 4: Document type selection
-            if (step == 4) {
+            // Step 5: Document type selection
+            if (step == 5) {
                 Text("Que tipo de documento desea imprimir:")
                 val docTypeObj = remember { documentType() }
                 val docValues = remember { docTypeObj.getDocuments() }
@@ -536,7 +577,7 @@ fun AddPrinterScreen(navController: NavController) {
                     ) {
                         OutlinedButton(onClick = { step = 3 }, border = BorderStroke(2.dp, Primary)) { Text("Atras") }
                         Button(
-                            onClick = { step = 5 },
+                            onClick = { step = 6 },
                             colors = ButtonDefaults.buttonColors(containerColor = Primary),
                             enabled = selectedDocTypes.value.isNotEmpty()
                         ) { Text("Siguiente") }
@@ -547,8 +588,8 @@ fun AddPrinterScreen(navController: NavController) {
 
 
             }
-            // Step 5: Save
-            if (step == 5) {
+            // Step 6: Save
+            if (step == 6) {
                 Text(
                     "Revisar y Guardar",
                     modifier = Modifier.fillMaxWidth(),

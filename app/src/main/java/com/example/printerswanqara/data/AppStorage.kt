@@ -34,6 +34,7 @@ object AppStorage {
     }
 
     fun saveSettings(context: Context, settings: Setting) {
+        println("Saving settings: $settings") // Debug log to check settings value
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit {
             putString(SETTINGS, Gson().toJson(settings))
