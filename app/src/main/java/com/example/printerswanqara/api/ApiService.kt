@@ -12,6 +12,7 @@ import com.example.printerswanqara.data.AppStorage
 import android.content.Context
 import com.example.printerswanqara.api.sales.SalesService
 import com.example.printerswanqara.api.baseinfo.BaseInfoService
+import com.example.printerswanqara.api.order.OrderService
 import com.example.printerswanqara.api.quotes.QuotesService
 
 // Data classes for login
@@ -104,6 +105,7 @@ data class PrinterDetails(
     val observation : Boolean ? = null,
     val taxes : Boolean ? = null,
     val user : Boolean ? = null,
+    val tip : Boolean ? = null,
 
 )
 data class ResetPasswordRequest(val email: String)
@@ -167,6 +169,39 @@ object ApiClient {
         println("Using tenant: $withTenant") // Debug log to confirm tenant usage
 
         return retrofit.create(ApiService::class.java)
+    }
+
+
+    fun createBaseInfoService(context: Context): BaseInfoService {
+
+        val client = OkHttpClient.Builder()
+
+            .addInterceptor { chain ->
+                val original: Request = chain.request()
+                val ruc = AppStorage.getRuc(context)
+                val token = AppStorage.getToken(context)
+                println("RUC from storage: $ruc")
+                val requestBuilder = original.newBuilder()
+                    .addHeader("Accept", "application/json")
+                if (ruc != null) {
+                    println("Adding X-tenant header with RUC: $ruc")
+                    requestBuilder.addHeader("X-tenant", ruc.trim())
+                }
+                if (token != null) {
+                    println("Adding Authorization header with token: $token")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    println("No token found, Authorization header not added")
+                }
+                chain.proceed(requestBuilder.build())
+            }
+            .build()
+        val retrofit = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+        return retrofit.create(BaseInfoService::class.java)
     }
 
     fun createSalesService(context: Context): SalesService {
@@ -233,8 +268,7 @@ object ApiClient {
         return retrofit.create(QuotesService::class.java)
     }
 
-
-    fun createBaseInfoService(context: Context): BaseInfoService {
+    fun createOrderService(context: Context): OrderService {
 
         val client = OkHttpClient.Builder()
 
@@ -263,6 +297,8 @@ object ApiClient {
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()
-        return retrofit.create(BaseInfoService::class.java)
+        return retrofit.create(OrderService::class.java)
     }
+
+
 }

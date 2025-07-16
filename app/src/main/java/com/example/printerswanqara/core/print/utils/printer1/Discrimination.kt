@@ -66,6 +66,8 @@ class Discrimination(
 
         // Fetch data from API ONCE
         val isCotizacion = mainCommand == "IMPRESION_COTIZACION"
+        val isPreTicket = mainCommand == "IMPRESION_PRE_TICKET"
+        val isComanda = mainCommand.startsWith("IMPRESION_COMANDA")
         println("Discrimination: isCotizacion = $isCotizacion")
         val transactionObject = if (!transactionID.isNullOrEmpty()) {
             withContext(Dispatchers.IO) {
@@ -74,7 +76,19 @@ class Discrimination(
                         val quotesService = ApiClient.createQuotesService(context)
                         val quote = quotesService.getQuoteById(transactionID).data
                         org.json.JSONObject(com.google.gson.Gson().toJson(quote))
-                    } else {
+                    }   else if (isPreTicket){
+
+                        val orderService = ApiClient.createOrderService(context)
+                        val order = orderService.getOrderById(transactionID).data
+                        org.json.JSONObject(com.google.gson.Gson().toJson(order))
+                    } else if (isComanda){
+
+                        val orderService = ApiClient.createOrderService(context)
+                        val order = orderService.getOrderById(transactionID).data
+                        org.json.JSONObject(com.google.gson.Gson().toJson(order))
+                    }
+
+                    else {
                         val salesService = ApiClient.createSalesService(context)
                         val sale = salesService.getSalesById(transactionID).data
                         org.json.JSONObject(com.google.gson.Gson().toJson(sale))
@@ -162,6 +176,7 @@ class Discrimination(
                             )
                             printerBuilder!!.imprimirPreticket(
                                 jsonObject,
+                                settingJson,
                                 printer!!.copyNumber,
                                 printer!!.charactersNumber
                             )

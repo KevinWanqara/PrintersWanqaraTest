@@ -36,7 +36,7 @@ data class Quotes(
     val subtotal: Double,
     val total: Double,
     val details: List<Detail>,
-    val Person: Person?,
+    val person: Person?,
     val taxes: List<Tax>,
     val sale_id: String?,
     val sale : Sales?,
