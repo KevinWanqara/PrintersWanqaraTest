@@ -75,22 +75,26 @@ class Discrimination(
                     if (isCotizacion) {
                         val quotesService = ApiClient.createQuotesService(context)
                         val quote = quotesService.getQuoteById(transactionID).data
+                        println("Discrimination: quote = $quote")
                         org.json.JSONObject(com.google.gson.Gson().toJson(quote))
                     }   else if (isPreTicket){
 
                         val orderService = ApiClient.createOrderService(context)
                         val order = orderService.getOrderById(transactionID).data
+                        println("Discrimination: order = $order")
                         org.json.JSONObject(com.google.gson.Gson().toJson(order))
                     } else if (isComanda){
 
                         val orderService = ApiClient.createOrderService(context)
                         val order = orderService.getOrderById(transactionID).data
+                        println("Discrimination: order = $order")
                         org.json.JSONObject(com.google.gson.Gson().toJson(order))
                     }
 
                     else {
                         val salesService = ApiClient.createSalesService(context)
                         val sale = salesService.getSalesById(transactionID).data
+                        println("Discrimination: sale = $sale")
                         org.json.JSONObject(com.google.gson.Gson().toJson(sale))
                     }
                 } catch (e: Exception) {

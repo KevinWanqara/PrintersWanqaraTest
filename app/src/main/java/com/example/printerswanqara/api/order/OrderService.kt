@@ -15,7 +15,7 @@ interface OrderService {
     suspend fun getOrderById(
 
         @Path("id") id: String,
-        @Query("include") include: String? = "table,details,tickets,tickets.details,details.productRelation,details.productRelation.taxes,table.area,subsidiary,taxes,subsidiary.image"
+        @Query("include") include: String? = "table,details,tickets,tickets.details,details.productRelation,details.productRelation.taxes,table.area,subsidiary,taxes,subsidiary.image,orderPrints,orderPrints.orderPrintDetails"
         ): OrderApiResponse
 }
 

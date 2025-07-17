@@ -1,6 +1,7 @@
 package com.example.printerswanqara.api.order
 
 import com.example.printerswanqara.api.sales.Detail
+import com.example.printerswanqara.api.sales.OrderPrints
 import com.example.printerswanqara.api.sales.Subsidiary
 import com.example.printerswanqara.api.sales.Tax
 
@@ -32,7 +33,7 @@ data class Order (
     val turn : String,
     val alias : String,
     val taxes : List<Tax>? = null,
-
+    val order_prints : List<OrderPrints>,
 
 
 

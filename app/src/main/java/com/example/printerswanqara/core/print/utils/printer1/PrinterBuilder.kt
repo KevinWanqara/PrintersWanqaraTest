@@ -418,11 +418,12 @@ class PrinterBuilder(private val tipo: String?) {
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
 
-                prn.alineadoIzquierda()
                 prn.agregarSalto()
-                prn.escribirTextoSinSalto("Observacion: ")
-                prn.escribirTextoSinSalto(js.optString("observation") ?: "N/A")
-
+                val observation = js.optString("observation", null)
+                if (!observation.isNullOrEmpty()) {
+                    prn.alineadoIzquierdaForce("Observacion: ")
+                    prn.alineadoIzquierdaForce(observation)
+                }
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
@@ -639,7 +640,11 @@ class PrinterBuilder(private val tipo: String?) {
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
                 prn.agregarSalto()
-                prn.alineadoIzquierdaForce(js.optString("observation") ?: "N/A")
+                val observation = js.optString("observation", null)
+                if (!observation.isNullOrEmpty()) {
+                    prn.alineadoIzquierdaForce("Observacion: ")
+                    prn.alineadoIzquierdaForce(observation)
+                }
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
@@ -989,6 +994,8 @@ class PrinterBuilder(private val tipo: String?) {
                 } else {
                     println("Image URL is missing or invalid.")
                 }
+                prn.escribirTextoSinSalto("PRETICKET")
+                prn.agregarSalto()
                 if (sj != null && subsidiary != null ) {
                     if (sj.optString("business_name") != "null") {
                         prn.escribirTextoSinSalto(sj.optString("business_name"))
@@ -1011,14 +1018,16 @@ class PrinterBuilder(private val tipo: String?) {
                         prn.escribirTextoSinSalto("Teléfono: " + sj.optString("phone"))
                     }
                     prn.agregarSalto()
-                    if (sj.optString("email") != "null") prn.escribirTextoSinSalto(
+                    if (sj.optString("email") != "null") prn.escribirTexto(
                         "Correo: " + sj.optString(
                             "email"
                         )
                     )
                 }
+
                 prn.agregarSalto()
-                prn.LineasIgualTexto("ATENCION EN LOCAL")
+                prn.LineasIgualTexto("Orden " +js.optString("sequential", "N/A"))
+                prn.agregarSalto()
                 prn.alineadoIzquierda()
                 if( js.has("table")){
                     val table = js.optJSONObject("table")
@@ -1030,9 +1039,6 @@ class PrinterBuilder(private val tipo: String?) {
                     prn.escribirTextoSinSalto("Mesa: ")
                     prn.escribirTextoSinSalto( table?.optString("name", "N/A") ?: "N/A")
                 }
-                prn.agregarSalto()
-                prn.escribirTextoSinSalto("Pedido No: ")
-                prn.escribirTextoSinSalto(js.optString("sequential", "N/A"))
 
 
 
@@ -1046,12 +1052,15 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Atendido por: ")
                 prn.escribirTextoSinSalto(js.optString("waiter", "N/A"))
+                    prn.agregarSalto()
                 }
 
                 prn.agregarSalto()
-                prn.LineasIgualTexto("Datos del Cliente")
+                prn.LineasIgualTexto("Datos para Facturación")
                 prn.agregarSalto()
                 prn.LineaGuionTexto("Nombre: ")
+                prn.agregarSalto()
+                prn.LineaGuionTexto(" ")
                 prn.agregarSalto()
                 prn.LineaGuionTexto("Identificación: ")
                 prn.agregarSalto()
@@ -1102,6 +1111,8 @@ class PrinterBuilder(private val tipo: String?) {
 
                 //Summary
                 prn.alineadoDerecha()
+
+                /*
                 if (js.has("discount")) {
                     prn.escribirTextoSinSalto("Descuentos:")
                     prn.agregarCaracteresDerecha(10, df.format(js.getDouble("discount")))
@@ -1128,15 +1139,21 @@ class PrinterBuilder(private val tipo: String?) {
                         prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("amount")))
                         prn.agregarSalto()
                     }
-
-
+                */
 
 
                 //agregar total
-                prn.escribirTextoSinSalto("Total:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
 
+                prn.escribirTextoSinSalto("Total A Pagar: ")
+
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
                 prn.agregarSalto()
+                prn.agregarSalto()
+                prn.alineadoIzquierda()
+                prn.alineadoIzquierdaForce("ESTE DOCUMENTO ES UN PRETICKET")
+                prn.alineadoIzquierdaForce("PARA REVISION DEL CLIENTE")
+                prn.alineadoIzquierdaForce("NO CONSTITUYE FACTURA")
+                prn.alineadoIzquierdaForce("NO TIENE VALIDEZ TRIBUTARIA")
 
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
@@ -1195,10 +1212,10 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.lineHeight()
             }
             prn.alineadoCentro()
-            val orderData = if (js?.has("order") == true) {
+            val orderData = if (js != null && js.has("order")) {
                 js.getJSONObject("order")
             } else {
-                js
+                js ?: JSONObject()
             }
             println("Order Data: $orderData")
 
@@ -1220,14 +1237,14 @@ class PrinterBuilder(private val tipo: String?) {
             val printDetails = order_prints.getJSONObject(0).getJSONArray("order_print_details")
 
             println("Print Details: $printDetails")
-            prn.agregarTexto("Orden " + (js.getJSONObject("order").optString("sequential") ?: "N/A"))
+            prn.agregarTexto("Orden " + (orderData.optString("sequential") ?: "N/A"))
             prn.agregarTexto("$printCode-$commandSequential")
             prn.alineadoIzquierda()
 
             prn.agregarSalto()
-            prn.agregarTexto("Mesero: " + (js.getJSONObject("order").optString("waiter") ?: "N/A"))
+            prn.agregarTexto("Mesero: " + (orderData.optString("waiter") ?: "N/A"))
 
-            prn.agregarTexto("Comensales: " + (js.getJSONObject("order").optString("pax") ?: "N/A"))
+            prn.agregarTexto("Comensales: " + (orderData.optString("pax") ?: "N/A"))
 
             prn.LineasIgual()
 
@@ -1256,7 +1273,7 @@ class PrinterBuilder(private val tipo: String?) {
             prn.LineasIgual()
 
             prn.negritaOn()
-            prn.agregarTexto(  (js.getJSONObject("order").optString("type") ?: "N/A"))
+            prn.agregarTexto(  (orderData.optString("type") ?: "N/A"))
 
             prn.negritaOff()
 

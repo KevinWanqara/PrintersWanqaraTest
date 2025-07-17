@@ -43,7 +43,7 @@ data class Sales(
     val customer: Customer?,
     val payment_account: List<PaymentAccount>,
     val taxes: List<Tax>,
-    val edocument: List<EDocument>,
+    //val edocument: List<EDocument>,
     val settings: Setting,
     val summary: Summary,
     val is_debt: Boolean,
