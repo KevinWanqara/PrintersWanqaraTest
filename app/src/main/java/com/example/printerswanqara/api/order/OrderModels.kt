@@ -34,13 +34,36 @@ data class Order (
     val alias : String,
     val taxes : List<Tax>? = null,
     val order_prints : List<OrderPrints>,
-
-
+    val delivery_record : DeliveryRecord? = null,
 
 
     )
 
 
+
+data class DeliveryRecord (
+
+    val id: String,
+    val address_id : String,
+    val address_string : String,
+    val date : String,
+    val delivery : Delivery,
+    val delivery_id : String,
+    val invoice_person_id : String,
+    val observation : String? = null,
+    val order_id : String,
+    val user_id : String,
+)
+
+data class Delivery (
+    val  id : String,
+    val invoice_person_id : String,
+    val name : String,
+    val observation : String? = null,
+    val phone : String,
+
+
+)
 data class Table (
     val id: String,
     val area : Area,

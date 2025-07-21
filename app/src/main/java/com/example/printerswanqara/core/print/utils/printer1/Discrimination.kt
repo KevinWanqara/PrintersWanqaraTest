@@ -68,6 +68,7 @@ class Discrimination(
         val isCotizacion = mainCommand == "IMPRESION_COTIZACION"
         val isPreTicket = mainCommand == "IMPRESION_PRE_TICKET"
         val isComanda = mainCommand.startsWith("IMPRESION_COMANDA")
+        val isCierre = mainCommand == "IMPRESION_CIERRE_CAJA"
         println("Discrimination: isCotizacion = $isCotizacion")
         val transactionObject = if (!transactionID.isNullOrEmpty()) {
             withContext(Dispatchers.IO) {
@@ -89,6 +90,12 @@ class Discrimination(
                         val order = orderService.getOrderById(transactionID).data
                         println("Discrimination: order = $order")
                         org.json.JSONObject(com.google.gson.Gson().toJson(order))
+                    } else if (isCierre){
+
+                        val cashRegisterService = ApiClient.createCashRegisterService(context)
+                        val cashRegister = cashRegisterService.getCashRegisterById(transactionID).data
+                        println("Discrimination: cashRegister = $cashRegister")
+                        org.json.JSONObject(com.google.gson.Gson().toJson(cashRegister))
                     }
 
                     else {
@@ -207,6 +214,20 @@ class Discrimination(
                                 )
                             }
 
+                        }
+                        "IMPRESION_CIERRE_CAJA" -> {
+                            android.util.Log.d(
+                                "Discrimination",
+                                "Sending imprimirCierreCaja command with documentType: $command"
+                            )
+                            if (printerBuilder != null) {
+                                printerBuilder!!.imprimirCierreCaja(
+                                    jsonObject,
+                                    settingJson,
+                                    printer!!.copyNumber,
+                                    printer!!.charactersNumber
+                                )
+                            }
                         }
                         // Add more document types as needed
                         else -> {

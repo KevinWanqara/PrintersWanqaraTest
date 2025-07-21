@@ -32,6 +32,8 @@ import java.util.Locale
 import java.util.UUID
 import androidx.core.content.edit
 
+import java.text.SimpleDateFormat
+import java.util.Date
 class PrinterBuilder(private val tipo: String?) {
 
     private var socketBluetooth: BluetoothSocket? = null
@@ -424,6 +426,31 @@ class PrinterBuilder(private val tipo: String?) {
                     prn.alineadoIzquierdaForce("Observacion: ")
                     prn.alineadoIzquierdaForce(observation)
                 }
+                val orderData = js.optJSONObject("order" ) ?: JSONObject()
+                val deliveryRecord = orderData.optJSONObject("delivery_record")
+
+                if(deliveryRecord != null) {
+                    prn.alineadoIzquierda()
+                    prn.negritaOn()
+                    prn.agregarTexto("Datos de Entrega")
+                    prn.negritaOff()
+                    prn.agregarTexto( "Direccion: " +
+                            deliveryRecord.optString("address_string", "N/A"))
+                    val delivery = deliveryRecord.optJSONObject("delivery")
+                    if (delivery != null) {
+                        prn.agregarTexto("Nombre: " +
+                                delivery.optString("name", "N/A"))
+
+                        prn.agregarTexto("Telefono: " +
+                                delivery.optString("phone" ,"N/A"))
+                        prn.agregarTexto("Observacion General: "+
+                                deliveryRecord.optString("observation" ,"N/A"))
+                        prn.agregarTexto("Observacion de Entrega: " +
+                                delivery.optString("observation" ,"N/A"))
+                    } else {
+                        prn.agregarTexto("N/A")
+                    }
+                }
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
@@ -644,6 +671,29 @@ class PrinterBuilder(private val tipo: String?) {
                 if (!observation.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce("Observacion: ")
                     prn.alineadoIzquierdaForce(observation)
+                }
+
+
+                val orderData = js.optJSONObject("order" ) ?: JSONObject()
+                val deliveryRecord = orderData.optJSONObject("delivery_record")
+
+                if(deliveryRecord != null) {
+                    prn.agregarTexto( "Direccion de Entrega")
+                    prn.agregarTexto( deliveryRecord.optString("address_string", "N/A"))
+
+                    val delivery = deliveryRecord.optJSONObject("delivery")
+                    if (delivery != null) {
+                        prn.agregarTexto("Nombre")
+                        prn.agregarTexto(delivery.optString("name", "N/A"))
+                        prn.agregarTexto("Telefono")
+                        prn.agregarTexto(delivery.optString("phone" ,"N/A"))
+                        prn.agregarTexto("Observacion General")
+                        prn.agregarTexto(deliveryRecord.optString("observation" ,"N/A"))
+                        prn.agregarTexto("Observacion de Entrega")
+                        prn.agregarTexto(delivery.optString("observation" ,"N/A"))
+                    } else {
+                        prn.agregarTexto("N/A")
+                    }
                 }
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
@@ -1273,7 +1323,8 @@ class PrinterBuilder(private val tipo: String?) {
             prn.LineasIgual()
 
             prn.negritaOn()
-            prn.agregarTexto(  (orderData.optString("type") ?: "N/A"))
+            prn.agregarTexto(orderData.optString("type") ?: "N/A")
+
 
             prn.negritaOff()
 
@@ -1308,169 +1359,190 @@ class PrinterBuilder(private val tipo: String?) {
 
 
 
-    // FUNCIONES
-    fun imprimirCierreCaja(js: JSONObject?, copias: Int, caracteres: Int) {
+    fun imprimirCierreCaja(js: JSONObject?,sj : JSONObject?, copias: Int, caracteres: Int) {
         try {
             if (js == null) return
 
             // reutilizables
             var detalles: JSONArray
-            var items: Int
             var jo: JSONObject
-
+            val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
+            println("Printer Config [TODO: Change to valid] : $printerConfig")
             // imprimir
             val prn = PrinterHelpers(caracteres, copias)
             prn.iniciar()
-            prn.setFontB()
-            prn.agregarSalto()
-            //Linea 1 numero de Factura y Fecha
-            prn.negritaOff()
-            prn.alineadoCentro()
-            prn.lineHeight2()
-            prn.dobleAltoOn()
-            prn.dobleAnchoOn()
-            prn.escribirTextoSinSalto("Cierre de Caja")
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Nº: " + js.optString("numeroSec"))
-            prn.agregarSalto()
-            prn.dobleAnchoOff()
-            prn.dobleAltoOff()
-            prn.agregarSalto()
             prn.setFontA()
+
+            prn.agregarSalto()
+            prn.alineadoCentro()
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("Caja #" + js.optString("sequential"))
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("Abierta " + js.optString("opened_at"))
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("Cerrada " + js.optString("closed_at","N/A" ))
+            prn.agregarSalto()
+            val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+
+            prn.escribirTextoSinSalto("Impreso " + currentDateTime)
+            prn.agregarSalto()
+
+            prn.LineasGuion()
+            prn.alineadoIzquierda()
+
+            prn.negritaOn()
+            prn.escribirTexto("Valores de Caja")
             prn.negritaOff()
-            prn.escribirTextoSinSalto(js.optString("razonSocialEmp"))
+
+
+
+            prn.escribirTextoSinSalto("Apertura")
+
+            prn.agregarCaracteresDerecha(caracteres-8,"$"+df.format(js.optDouble("opening")))
             prn.agregarSalto()
-            if (js.optString("nombreComercialEmp") != "null") {
-                prn.escribirTextoSinSalto(js.optString("nombreComercialEmp"))
-                prn.agregarSalto()
-            }
-            prn.escribirTextoSinSalto("RUC: " + js.optString("rucEmp"))
-            prn.agregarSalto()
-            prn.agregarTexto("Dirección: " + js.optString("direccionSuc"))
-            prn.agregarSalto()
-            prn.setFontB()
-            prn.alineadoIzquierda()
-            prn.escribirTextoSinSalto("CAJA: " + js.optString("nombreCaj"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Responsable: ")
-            prn.escribirTextoSinSalto(js.optString("responsableCaj"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Fecha Apertura: ")
-            prn.escribirTextoSinSalto(js.optString("fechaApertura"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Fecha Cierre: ")
-            prn.escribirTextoSinSalto(js.optString("fechaCierre"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Nº Ventas Realizadas: ")
-            prn.escribirTextoSinSalto(js.optString("totalVentasRealizadas"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Nº Ventas Anuladas: ")
-            prn.escribirTextoSinSalto(js.optString("totalVentasAnuladas"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Valor de Apertura: ")
-            prn.escribirTextoSinSalto(js.optString("totalApertura"))
-            prn.agregarSalto()
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Detalle de Ingresos:")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            prn.escribirTextoSinSalto("Cant  F. Pago")
-            prn.agregarCaracteres(caracteres - 18, "")
-            prn.escribirTextoSinSalto("Total")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            detalles = js.getJSONArray("listaIngresos")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.agregarTexto(
-                    prn.lineaCierre(
-                        jo.optString("cantidad"),
-                        jo.optString("formaPago"),
-                        jo.optString("total"),
-                        caracteres
-                    )
-                )
-            }
-            prn.LineasIgual()
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Detalle de Egresos:")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            prn.escribirTextoSinSalto("Cant  F. Pago")
-            prn.agregarCaracteres(caracteres - 18, "")
-            prn.escribirTextoSinSalto("Total")
-            prn.agregarSalto()
-            prn.LineasIgual()
-            detalles = js.getJSONArray("listaEgresos")
-            for (j in 0 until detalles.length()) {
-                jo = detalles.getJSONObject(j)
-                prn.agregarTexto(
-                    prn.lineaCierre(
-                        jo.optString("cantidad"),
-                        jo.optString("formaPago"),
-                        jo.optString("total"),
-                        caracteres
-                    )
-                )
-            }
-            prn.LineasIgual()
-            prn.alineadoDerecha()
-            var resultado = BigDecimal(js.optString("totalSobranteFaltante"))
-            val totalEfectivoSistema =
-                resultado.multiply(BigDecimal("-1")).add(BigDecimal(js.optString("totalContado")))
-                    .setScale(2, BigDecimal.ROUND_HALF_UP)
-            //agregar total
-            prn.escribirTextoSinSalto("(+)Total Ingresos:")
-            val ingresos =
-                BigDecimal(js.optString("totalIgresos")).subtract(BigDecimal(js.optString("totalApertura")))
-                    .setScale(2, BigDecimal.ROUND_HALF_UP)
-            prn.agregarCaracteresDerecha(10, ingresos.toString())
-            prn.agregarSalto()
-            //agregar total
-            prn.escribirTextoSinSalto("(+)Total Apertura:")
-            val totalApertura = BigDecimal(js.optString("totalApertura"))
-            prn.agregarCaracteresDerecha(10, totalApertura.toString())
-            prn.agregarSalto()
-            //agregar total
-            prn.escribirTextoSinSalto("(-)Total Egresos:")
-            val totalEgresos = BigDecimal(js.optString("totalEgresos"))
-            prn.agregarCaracteresDerecha(10, totalEgresos.toString())
-            prn.agregarSalto()
-            //agregar total
-            prn.escribirTextoSinSalto("(a)Total Efectivo Sistema:")
-            prn.agregarCaracteresDerecha(10, totalEfectivoSistema.toString())
-            prn.agregarSalto()
-            //agregar total
-            prn.escribirTextoSinSalto("(b)Total Efectivo Contado:")
-            val totalContado = BigDecimal(js.optString("totalContado"))
-            prn.agregarCaracteresDerecha(10, totalContado.toString())
-            prn.agregarSalto()
-            prn.alineadoIzquierda()
-            if (resultado.compareTo(BigDecimal.ZERO) == 0) {
-                prn.escribirTextoSinSalto("El valor del Dinero en EFECTIVO DEL SISTEMA (a) es igual al valor del Dinero en EFECTIVO CONTADO (b)")
-                prn.agregarSalto()
-            } else {
-                prn.escribirTextoSinSalto("El valor del Dinero en EFECTIVO DEL SISTEMA (a) NO es igual al valor del Dinero en EFECTIVO CONTADO (b)")
-                prn.agregarSalto()
-                prn.agregarSalto()
-                prn.negritaOn()
-                prn.alineadoCentro()
-                if (resultado.compareTo(BigDecimal.ZERO) == 1) {
-                    prn.escribirTextoSinSalto("SOBRANTE: ")
-                } else {
-                    prn.escribirTextoSinSalto("FALTANTE: ")
-                    resultado = resultado.multiply(BigDecimal("-1"))
+
+            val cashMovements = js.optJSONArray("cash_movements")
+
+            var ins = 0.00
+            var outs = 0.00
+
+            if (cashMovements != null) {
+                for (i in 0 until cashMovements.length()) {
+                    val movement = cashMovements.optJSONObject(i)
+                    if (movement != null) {
+                        val type = movement.optString("type")
+                        val total = movement.optString("total").toDoubleOrNull() ?: 0.00
+                        if (type == "in") {
+                            ins += total
+                        } else if (type == "out") {
+                            outs += total
+                        }
+                    }
                 }
-                prn.escribirTextoSinSalto(resultado.toString() + "")
-                prn.negritaOff()
+            }
+
+            println("Ingresos: $ins")
+            println("Outs: $outs")
+
+            prn.escribirTextoSinSalto("+ Ingresos")
+            prn.agregarCaracteresDerecha(caracteres-10,"$"+ df.format(ins))
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("- Egresos")
+            prn.agregarCaracteresDerecha(caracteres-9,"$"+ df.format(outs))
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("Efectivo Ventas")
+            prn.agregarCaracteresDerecha(caracteres-15,"$"+df.format(js.optDouble("sales_cash")))
+
+            prn.negritaOn()
+            prn.LineasGuionSinTexto()
+            prn.negritaOff()
+
+            prn.escribirTextoSinSalto("Total Caja")
+            prn.agregarCaracteresDerecha(caracteres-10,"$"+df.format(js.optDouble("total_cash")))
+            prn.LineasGuion()
+            prn.negritaOn()
+            prn.escribirTexto("Cuadre de Caja")
+            prn.negritaOff()
+            prn.LineasGuion()
+
+            prn.escribirTextoSinSalto("Total en Efectivo")
+            prn.agregarCaracteresDerecha(caracteres-17,"$"+df.format(js.optDouble("total_cash")))
+            prn.agregarSalto()
+            prn.escribirTextoSinSalto("Efectivo Entregado")
+            prn.agregarCaracteresDerecha(caracteres-18,"$"+df.format(js.optDouble("received_cash")))
+            prn.agregarSalto()
+            prn.negritaOn()
+            prn.LineasGuionSinTexto()
+            prn.negritaOff()
+            val totalCash = js.optDouble("total_cash", 0.0)
+            val receivedCash = js.optDouble("received_cash", 0.0)
+            val difference = receivedCash - totalCash
+
+            val status = if (difference < 0) "F" else if (difference > 0) "S" else null
+
+            prn.escribirTextoSinSalto("Diferencia")
+            if(status != null) {
+                prn.agregarCaracteresDerecha(caracteres-10,"$"+df.format(js.optDouble("difference"))+" "+status)
+            } else {
+                prn.agregarCaracteresDerecha(caracteres-10,"$"+df.format(js.optDouble("difference")))
             }
             prn.agregarSalto()
+            prn.LineasGuion()
+            prn.negritaOn()
+            prn.escribirTexto("Resumen de Pagos")
+            prn.negritaOff()
+            prn.LineasGuion()
+
+
+            val summary = js.optJSONObject("summary")
+            val paymentMethods = summary?.optJSONArray("payment_methods")
+
+            if (paymentMethods != null && paymentMethods.length() > 0) {
+                for (i in 0 until paymentMethods.length()) {
+                    val paymentMethod = paymentMethods.getJSONObject(i)
+                    val paymentMethodName = paymentMethod.optString("name", "N/A")
+                    val remainingSpace = caracteres - paymentMethodName.length
+                    prn.escribirTextoSinSalto(paymentMethod.optString("name", "N/A"))
+                    prn.agregarCaracteresDerecha(remainingSpace,"$"+df.format(paymentMethod.optDouble("amount", 0.0)))
+                    prn.agregarSalto()
+                }
+            } else {
+                prn.escribirTextoSinSalto("No hay métodos de pago")
+                prn.agregarSalto()
+            }
+            prn.negritaOn()
+            prn.LineasGuionSinTexto()
+            prn.negritaOff()
+            prn.escribirTextoSinSalto("Total Ventas")
+            prn.agregarCaracteresDerecha(caracteres-12,"$"+df.format(js.optDouble("sales_total")))
+
             prn.agregarSalto()
+
+            prn.LineasGuion()
+            prn.negritaOn()
+            prn.escribirTexto("Resumen de Productos")
+            prn.negritaOff()
+            prn.LineasGuion()
+            val salesByProduct = summary?.optJSONArray("sales_by_product")
+
+            if (salesByProduct != null && salesByProduct.length() > 0) {
+                for (i in 0 until salesByProduct.length()) {
+                    val saleProduct = salesByProduct.getJSONObject(i)
+                    val productName = saleProduct.optString("product_name", "N/A")
+                    val quantity = saleProduct.optInt("total_quantity").toString()
+                    val price = "$" + df.format(saleProduct.optDouble("total_sold_with_taxes", 0.0))
+
+                    val productNameWidth = (caracteres * 0.6).toInt()
+                    val quantityWidth = (caracteres * 0.2).toInt()
+                    val priceWidth = (caracteres * 0.2).toInt()
+
+
+                    val truncatedProductName = if (productName.length > productNameWidth) {
+                        productName.take(productNameWidth - 3) + "..."
+                    } else {
+                        productName.padEnd(productNameWidth)
+                    }
+
+
+                    val paddedQuantity = quantity.padStart(quantityWidth)
+                    val paddedPrice = price.padStart(priceWidth)
+
+
+                    prn.escribirTextoSinSalto(truncatedProductName)
+                    prn.escribirTextoSinSalto(paddedQuantity)
+                    prn.escribirTextoSinSalto(paddedPrice)
+                    prn.agregarSalto()
+                }
+            } else {
+                prn.escribirTextoSinSalto("No hay productos vendidos")
+                prn.agregarSalto()
+            }
+            prn.LineasGuion()
             prn.agregarSalto()
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("_______________")
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto(js.optString("responsableCaj"))
+            prn.alineadoCentro()
+            prn.escribirTexto("¡Gracias!")
+
             prn.feedFinal()
             prn.alineadoIzquierda()
             prn.cortar()

@@ -3,6 +3,7 @@ package com.example.printerswanqara.api.sales
 
 import com.example.printerswanqara.api.Setting
 import com.example.printerswanqara.api.UserDetails
+import com.example.printerswanqara.api.order.Order
 
 // Main API response for a sales request
 data class SalesApiResponse(
@@ -57,23 +58,11 @@ data class Sales(
     val complete: Boolean?,
     val change_amount : Double?,
     val inventory_records: List<SaleInventoryRecord>?,
-    val order : OrderData,
-
+    val order : Order,
 
     )
 
-data class OrderData (
-    val id : String,
-    val date : String,
-    val observation : String?,
-    val sequential : String,
-    val status : String,
-    val table : Table,
-    val type : String,
-    val waiter : String,
-    val pax : Int,
-    val order_prints : List<OrderPrints>,
-)
+
 data class OrderPrints(
     val sequential: String,
     val order_print_details: List<OrderPrintDetails>

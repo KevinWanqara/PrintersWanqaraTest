@@ -320,6 +320,14 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         }
     }
 
+    fun LineasGuionSinTexto() {
+        val guionLine = "_"
+        for (i in 0 until impresoraCaracteres) {
+            escribirTextoSinSalto(guionLine)
+        }
+        agregarSalto()
+    }
+
     fun agregarTexto(texto: String?) {
         var textoProcesado = ""
         var cont = 1
