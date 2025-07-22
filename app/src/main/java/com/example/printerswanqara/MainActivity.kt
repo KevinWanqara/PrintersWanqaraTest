@@ -261,7 +261,7 @@ class MainActivity : ComponentActivity() {
                                 composable("add_printer") { AddPrinterScreen(navController) }
                                 composable("edit_printer/{printerId}") { backStackEntry ->
                                     val printerId = backStackEntry.arguments?.getString("printerId")
-                                    EditPrinterScreen(printerId)
+                                    EditPrinterScreen(printerId,navController)
                                 }
                                 composable("list_printers") { ListPrintersScreen(
                                     navController

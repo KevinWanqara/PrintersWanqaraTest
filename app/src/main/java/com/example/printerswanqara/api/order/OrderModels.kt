@@ -45,6 +45,7 @@ data class DeliveryRecord (
 
     val id: String,
     val address_id : String,
+    val address: Address,
     val address_string : String,
     val date : String,
     val delivery : Delivery,
@@ -55,6 +56,14 @@ data class DeliveryRecord (
     val user_id : String,
 )
 
+data class Address (
+    val id : String,
+    val address : String,
+    val is_main : Boolean,
+    val name : String,
+    val observation : String? = null,
+
+)
 data class Delivery (
     val  id : String,
     val invoice_person_id : String,

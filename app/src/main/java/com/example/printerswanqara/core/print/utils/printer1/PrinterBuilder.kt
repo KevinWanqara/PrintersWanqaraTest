@@ -428,25 +428,21 @@ class PrinterBuilder(private val tipo: String?) {
                 }
                 val orderData = js.optJSONObject("order" ) ?: JSONObject()
                 val deliveryRecord = orderData.optJSONObject("delivery_record")
-
+                prn.LineasIgual()
+                prn.alineadoIzquierda()
                 if(deliveryRecord != null) {
+                    prn.LineasIgual()
                     prn.alineadoIzquierda()
-                    prn.negritaOn()
-                    prn.agregarTexto("Datos de Entrega")
-                    prn.negritaOff()
-                    prn.agregarTexto( "Direccion: " +
-                            deliveryRecord.optString("address_string", "N/A"))
                     val delivery = deliveryRecord.optJSONObject("delivery")
-                    if (delivery != null) {
-                        prn.agregarTexto("Nombre: " +
-                                delivery.optString("name", "N/A"))
+                    val address = deliveryRecord.optJSONObject("address")
 
-                        prn.agregarTexto("Telefono: " +
-                                delivery.optString("phone" ,"N/A"))
-                        prn.agregarTexto("Observacion General: "+
-                                deliveryRecord.optString("observation" ,"N/A"))
-                        prn.agregarTexto("Observacion de Entrega: " +
-                                delivery.optString("observation" ,"N/A"))
+                    prn.agregarTexto( "Dirección: ")
+                    prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
+
+
+                    if (delivery != null) {
+                        prn.agregarTexto("Nombre: " +  delivery.optString("name", "N/A"))
+                        prn.agregarTexto("Teléfono: " + delivery.optString("phone" ,"N/A"))
                     } else {
                         prn.agregarTexto("N/A")
                     }
@@ -568,7 +564,13 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.escribirTextoSinSalto(js.getJSONObject("customer").optString("identity"))
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Teléfono: ")
-                prn.escribirTextoSinSalto(js.getJSONObject("customer").getJSONArray("phones").optString(0, ""))
+                val customer = js.optJSONObject("customer")
+                val phones = customer?.optJSONArray("phones")
+                if (phones != null && phones.length() > 0) {
+                    prn.escribirTextoSinSalto(phones.optString(0, ""))
+                } else {
+                    prn.escribirTextoSinSalto("Sin Teléfono")
+                }
                 val user = printerConfig?.optBoolean("user")
 
                 if( user == true) {
@@ -677,20 +679,20 @@ class PrinterBuilder(private val tipo: String?) {
                 val orderData = js.optJSONObject("order" ) ?: JSONObject()
                 val deliveryRecord = orderData.optJSONObject("delivery_record")
 
-                if(deliveryRecord != null) {
-                    prn.agregarTexto( "Direccion de Entrega")
-                    prn.agregarTexto( deliveryRecord.optString("address_string", "N/A"))
 
+                if(deliveryRecord != null) {
+                    prn.LineasIgual()
+                    prn.alineadoIzquierda()
                     val delivery = deliveryRecord.optJSONObject("delivery")
+                    val address = deliveryRecord.optJSONObject("address")
+
+                    prn.agregarTexto( "Dirección: ")
+                    prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
+
+
                     if (delivery != null) {
-                        prn.agregarTexto("Nombre")
-                        prn.agregarTexto(delivery.optString("name", "N/A"))
-                        prn.agregarTexto("Telefono")
-                        prn.agregarTexto(delivery.optString("phone" ,"N/A"))
-                        prn.agregarTexto("Observacion General")
-                        prn.agregarTexto(deliveryRecord.optString("observation" ,"N/A"))
-                        prn.agregarTexto("Observacion de Entrega")
-                        prn.agregarTexto(delivery.optString("observation" ,"N/A"))
+                        prn.agregarTexto("Nombre: " +  delivery.optString("name", "N/A"))
+                        prn.agregarTexto("Teléfono: " + delivery.optString("phone" ,"N/A"))
                     } else {
                         prn.agregarTexto("N/A")
                     }

@@ -100,7 +100,7 @@ fun AddPrinterScreen(navController: NavController) {
     var testFont by remember { mutableStateOf("A") } // Default to "A"
 
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { _ ->
         val animatedProgress by animateFloatAsState(
             targetValue = step / 5f,
             animationSpec = tween(durationMillis = 600)

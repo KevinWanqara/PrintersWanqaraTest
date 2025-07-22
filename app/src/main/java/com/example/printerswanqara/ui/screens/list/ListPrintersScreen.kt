@@ -182,11 +182,7 @@ fun ListPrintersScreen(navController: NavController) {
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.weight(1f)
                                 )
-                                if (groupList.isNotEmpty()) {
-                                    TextButton(onClick = { showGroupDeleteDialog = true }) {
-                                        Text("Eliminar grupo", color = Color.Red)
-                                    }
-                                }
+
                             }
                             if (showGroupDeleteDialog) {
                                 AlertDialog(
