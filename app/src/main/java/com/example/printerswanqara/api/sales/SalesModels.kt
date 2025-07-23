@@ -173,6 +173,7 @@ data class Subsidiary(
     val differentiated_billing: Boolean,
     val city_id: String,
     val image : SubsidiaryImage,
+    val observation : String? = null,
 )
 
 data class SubsidiaryImage(

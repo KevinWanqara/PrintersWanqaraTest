@@ -423,18 +423,25 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
                 val observation = js.optString("observation", null)
                 if (!observation.isNullOrEmpty()) {
-                    prn.alineadoIzquierdaForce("Observacion: ")
                     prn.alineadoIzquierdaForce(observation)
+                }
+                if (printerConfig != null) {
+                    if (printerConfig.optBoolean("observation", false) && subsidiary != null) {
+                        val observation = subsidiary.optString("observation", null)
+                        if (!observation.isNullOrEmpty()) {
+                            prn.alineadoIzquierdaForce(observation)
+                        }
+                    }
                 }
                 val orderData = js.optJSONObject("order" ) ?: JSONObject()
                 val deliveryRecord = orderData.optJSONObject("delivery_record")
-                prn.LineasIgual()
-                prn.alineadoIzquierda()
+
                 if(deliveryRecord != null) {
                     prn.LineasIgual()
-                    prn.alineadoIzquierda()
                     val delivery = deliveryRecord.optJSONObject("delivery")
                     val address = deliveryRecord.optJSONObject("address")
+                    prn.alineadoIzquierda()
+
 
                     prn.agregarTexto( "Dirección: ")
                     prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
@@ -446,7 +453,17 @@ class PrinterBuilder(private val tipo: String?) {
                     } else {
                         prn.agregarTexto("N/A")
                     }
+
+
+
+
                 }
+                if(orderData.optString("type") == "Retiro en local"){
+                    prn.LineasIgual()
+                    prn.alineadoIzquierda()
+                    prn.agregarTexto("Retiro en local")
+                }
+
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
@@ -671,20 +688,32 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
                 val observation = js.optString("observation", null)
                 if (!observation.isNullOrEmpty()) {
-                    prn.alineadoIzquierdaForce("Observacion: ")
                     prn.alineadoIzquierdaForce(observation)
                 }
-
+                if (printerConfig != null) {
+                    if (printerConfig.optBoolean("observation", false) && subsidiary != null) {
+                        val observation = subsidiary.optString("observation", null)
+                        if (!observation.isNullOrEmpty()) {
+                            prn.alineadoIzquierdaForce(observation)
+                        }
+                    }
+                }
 
                 val orderData = js.optJSONObject("order" ) ?: JSONObject()
                 val deliveryRecord = orderData.optJSONObject("delivery_record")
 
 
                 if(deliveryRecord != null) {
+
+
                     prn.LineasIgual()
-                    prn.alineadoIzquierda()
                     val delivery = deliveryRecord.optJSONObject("delivery")
                     val address = deliveryRecord.optJSONObject("address")
+
+
+
+                    prn.alineadoIzquierda()
+
 
                     prn.agregarTexto( "Dirección: ")
                     prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
@@ -696,6 +725,14 @@ class PrinterBuilder(private val tipo: String?) {
                     } else {
                         prn.agregarTexto("N/A")
                     }
+
+
+                }
+
+                if(orderData.optString("type") == "Retiro en local"){
+                    prn.LineasIgual()
+                    prn.alineadoIzquierda()
+                    prn.agregarTexto("Retiro en local")
                 }
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
