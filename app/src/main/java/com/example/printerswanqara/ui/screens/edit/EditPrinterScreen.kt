@@ -99,7 +99,7 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                 port = it.port ?: 0
                 copyNumber = it.copyNumber
                 characters = it.charactersNumber
-                documentType = it.documentType ?: ""
+                documentType = it.documentType
             }
         }
     }

@@ -16,6 +16,6 @@ class BitmapCoffeeImage(private val image:Bitmap): CoffeeImage {
         val pixel = image.getPixel(x, y)
         return (Color.alpha(pixel) shl 24) or (Color.red(pixel) shl 16) or (Color.green(pixel) shl 8) or (Color.blue(
             pixel
-        ) shl 0);
+        ) shl 0)
     }
 }

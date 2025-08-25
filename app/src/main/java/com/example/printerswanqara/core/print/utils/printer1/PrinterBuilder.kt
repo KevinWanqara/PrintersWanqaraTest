@@ -24,7 +24,6 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.io.OutputStream
-import java.math.BigDecimal
 import java.net.Socket
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -128,7 +127,7 @@ class PrinterBuilder(private val tipo: String?) {
                                         UsbPrintersConnections.selectFirstConnected(context)
                                     val usbManager =
                                         context.getSystemService(AppCompatActivity.USB_SERVICE) as UsbManager
-                                    if (usbConnection != null && usbManager != null) {
+                                    if (usbConnection != null) {
                                         usbOutputStream =
                                             UsbOutputStream(usbManager, usbConnection.device)
                                     }
@@ -421,15 +420,15 @@ class PrinterBuilder(private val tipo: String?) {
                 )
 
                 prn.agregarSalto()
-                val observation = js.optString("observation", null)
+                val observation = js.optString("observation", "")
                 if (!observation.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce(observation)
                 }
                 if (printerConfig != null) {
                     if (printerConfig.optBoolean("observation", false) && subsidiary != null) {
-                        val observation = subsidiary.optString("observation", null)
-                        if (!observation.isNullOrEmpty()) {
-                            prn.alineadoIzquierdaForce(observation)
+                        val subsidiaryObservation = subsidiary.optString("observation", "")
+                        if (!subsidiaryObservation.isNullOrEmpty()) {
+                            prn.alineadoIzquierdaForce(subsidiaryObservation)
                         }
                     }
                 }
@@ -444,7 +443,9 @@ class PrinterBuilder(private val tipo: String?) {
 
 
                     prn.agregarTexto( "Dirección: ")
-                    prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
+                    if (address != null) {
+                        prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
+                    }
 
 
                     if (delivery != null) {
@@ -686,15 +687,15 @@ class PrinterBuilder(private val tipo: String?) {
                     df.format(js.getDouble("change_amount")).replace("-", "")
                 )
                 prn.agregarSalto()
-                val observation = js.optString("observation", null)
+                val observation = js.optString("observation", "")
                 if (!observation.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce(observation)
                 }
                 if (printerConfig != null) {
                     if (printerConfig.optBoolean("observation", false) && subsidiary != null) {
-                        val observation = subsidiary.optString("observation", null)
-                        if (!observation.isNullOrEmpty()) {
-                            prn.alineadoIzquierdaForce(observation)
+                        val subsidiaryObservation = subsidiary.optString("observation", "")
+                        if (!subsidiaryObservation.isNullOrEmpty()) {
+                            prn.alineadoIzquierdaForce(subsidiaryObservation)
                         }
                     }
                 }
@@ -716,7 +717,9 @@ class PrinterBuilder(private val tipo: String?) {
 
 
                     prn.agregarTexto( "Dirección: ")
-                    prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
+                    if (address != null) {
+                        prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
+                    }
 
 
                     if (delivery != null) {
@@ -757,7 +760,7 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.cortar()
 
                 println("Comandos")
-                println(prn.getTrabajo().toString())
+                println(prn.getTrabajo())
                 enviarImprimir(prn.getTrabajo())
 
 
@@ -939,7 +942,7 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarCaracteresDerecha(10, df.format(js.getDouble("subtotal")))
                 prn.agregarSalto()
                 // Print IVA sorted by rate
-                var taxesData = js.optJSONArray("taxes")
+                val taxesData = js.optJSONArray("taxes")
                 if(taxesData != null ){
 
                 detalles = js.getJSONArray("taxes")
@@ -975,13 +978,13 @@ class PrinterBuilder(private val tipo: String?) {
 
 
                 prn.agregarSalto()
-                val observation = js.optString("observation", null)
+                val observation = js.optString("observation", "")
                 if (!observation.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce("Observacion: ")
                     prn.alineadoIzquierdaForce(observation)
                 }
 
-                val paymentTerms = js.optString("payment_terms", null)
+                val paymentTerms = js.optString("payment_terms", "")
                 if (!paymentTerms.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce("Condiciones de Pago: ")
                     prn.alineadoIzquierdaForce(paymentTerms)
@@ -1009,7 +1012,7 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.cortar()
 
                 println("Comandos")
-                println(prn.getTrabajo().toString())
+                println(prn.getTrabajo())
                 enviarImprimir(prn.getTrabajo())
 
 
@@ -1267,7 +1270,7 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.cortar()
 
                 println("Comandos")
-                println(prn.getTrabajo().toString())
+                println(prn.getTrabajo())
                 enviarImprimir(prn.getTrabajo())
             }
 
@@ -1277,14 +1280,14 @@ class PrinterBuilder(private val tipo: String?) {
     }
 
 
-    suspend fun imprimirComandas(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int, printCode: String) {
+     fun imprimirComandas(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int, printCode: String) {
         try {
             if (js == null) return
 
             // reutilizables
-            val detalles: JSONArray
-            var items: Int
-            var jo: JSONObject
+            //val detalles: JSONArray
+            //var items: Int
+            //var jo: JSONObject
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("order")
             println("Printer Config: $printerConfig")
             // imprimir
@@ -1301,10 +1304,10 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.lineHeight()
             }
             prn.alineadoCentro()
-            val orderData = if (js != null && js.has("order")) {
+            val orderData = if (js.has("order")) {
                 js.getJSONObject("order")
             } else {
-                js ?: JSONObject()
+                js
             }
             println("Order Data: $orderData")
 
@@ -1411,8 +1414,8 @@ class PrinterBuilder(private val tipo: String?) {
             if (js == null) return
 
             // reutilizables
-            var detalles: JSONArray
-            var jo: JSONObject
+            //var detalles: JSONArray
+            //var jo: JSONObject
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
             println("Printer Config [TODO: Change to valid] : $printerConfig")
             // imprimir

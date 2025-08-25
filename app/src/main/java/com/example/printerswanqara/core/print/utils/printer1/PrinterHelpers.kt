@@ -378,7 +378,7 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         }
     }
 
-    fun retornarCaracteresDerecha(NumeroCaracteres: Int, text: String): String? {
+    fun retornarCaracteresDerecha(NumeroCaracteres: Int, text: String): String {
         var text = text
         var caracteresfaltantes = 0
         var t = ""
@@ -467,7 +467,7 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         trabajo += "\n"
     }
 
-    fun formatoText(texto: String): String? {
+    fun formatoText(texto: String): String {
         var msg = texto
         msg = msg.replace("Á", "A")
         msg = msg.replace("É", "E")
@@ -641,7 +641,7 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         Total: String,
         impuesto: JSONObject?,
         caracteresDisponibles: Int
-    ): String? {
+    ): String {
         //Cantidad
         var detalle = detalle
         var precioU = precioU
@@ -843,7 +843,7 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         detalle: String,
         observacion: String,
         caracteresDisponibles: Int
-    ): String? {
+    ): String {
         //Cantidad
         var detalle = detalle
         var _cantidad = BigDecimal(cantidad).setScale(2, RoundingMode.HALF_UP).toString()
@@ -893,7 +893,7 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         try {
             printerBuilder.printMediaJob(mediaBuilder)
         } catch (e: Exception) {
-            android.util.Log.e("PrinterHelpers", "Error printing logo from $url", e)
+            Log.e("PrinterHelpers", "Error printing logo from $url", e)
         }
     }
 

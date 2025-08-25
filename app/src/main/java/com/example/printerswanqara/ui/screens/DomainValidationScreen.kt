@@ -148,7 +148,7 @@ fun DomainValidationScreen(
                 Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             }
             Spacer(modifier = Modifier.height(32.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "¿Tienes problemas para acceder?",

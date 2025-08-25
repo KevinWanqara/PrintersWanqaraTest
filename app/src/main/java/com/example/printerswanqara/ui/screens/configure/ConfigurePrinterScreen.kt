@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.with
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,10 +36,8 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.WrapText
 import androidx.compose.material.icons.filled.FormatLineSpacing
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.CheckCircle
@@ -51,7 +48,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.text.style.TextOverflow
@@ -151,7 +147,7 @@ fun PrinterProfileCard(title: String, details: com.example.printerswanqara.api.P
                 // Numeric/String values section
                 Column(modifier = Modifier.padding(bottom = 8.dp)) {
                     ProfileRow(label = "Fuente", value = details.font, icon = Icons.Filled.TextFields)
-                    ProfileRow(label = "Saltos de línea", value = details.line_breaks?.toString(), icon = Icons.Filled.WrapText)
+                    ProfileRow(label = "Saltos de línea", value = details.line_breaks?.toString(), icon = Icons.AutoMirrored.Filled.WrapText)
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 // Boolean values section
@@ -160,7 +156,7 @@ fun PrinterProfileCard(title: String, details: com.example.printerswanqara.api.P
                     BooleanRow(label = "Encabezado", value = details.header, icon = Icons.Filled.Title)
                     BooleanRow(label = "Interlineado", value = details.line_spacing, icon = Icons.Filled.FormatLineSpacing)
                     BooleanRow(label = "Logo", value = details.logo, icon = Icons.Filled.Image)
-                    BooleanRow(label = "Observación", value = details.observation, icon = Icons.Filled.Notes)
+                    BooleanRow(label = "Observación", value = details.observation, icon = Icons.AutoMirrored.Filled.Notes)
                     BooleanRow(label = "Desglosar Impuestos", value = details.taxes, icon = Icons.Filled.Receipt)
                     BooleanRow(label = "Vendedor", value = details.user, icon = Icons.Filled.Person)
                 }

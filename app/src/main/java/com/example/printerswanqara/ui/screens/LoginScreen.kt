@@ -2,9 +2,9 @@ package com.example.printerswanqara.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.with
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -150,7 +150,7 @@ fun LoginScreen(
                         AnimatedContent(
                             targetState = passwordVisible,
                             transitionSpec = {
-                                slideInVertically(initialOffsetY = { it }) with slideOutVertically(targetOffsetY = { -it })
+                                slideInVertically(initialOffsetY = { it }) togetherWith slideOutVertically(targetOffsetY = { -it })
                             }
                         ) { visible ->
                             val image = if (visible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
@@ -193,7 +193,7 @@ fun LoginScreen(
                     Text("¿Olvidaste tu contraseña?")
                 }
                 Spacer(modifier = Modifier.height(32.dp))
-                Divider()
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "¿Esta no es tu empresa?",

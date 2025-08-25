@@ -1,6 +1,6 @@
 package com.example.printerswanqara.core.document
 
-class documentType(){
+class documentType {
     private val documentMap : Map<String,String> = mapOf(
         "IMPRESION_RECIBO" to "Recibos",
         "IMPRESION_FACTURA_ELECTRONICA" to "Factura electronica",
@@ -23,7 +23,7 @@ class documentType(){
     fun findDocumentByKey(key: String): String? {
         return documentMap[key]
     }
-    fun findKeyByDocument(document:String): String? {
+    fun findKeyByDocument(document:String): String {
         return this.documentMap.filterValues { it == document }.keys.first().toString()
     }
 }

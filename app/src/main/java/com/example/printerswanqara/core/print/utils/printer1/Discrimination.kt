@@ -77,32 +77,32 @@ class Discrimination(
                         val quotesService = ApiClient.createQuotesService(context)
                         val quote = quotesService.getQuoteById(transactionID).data
                         println("Discrimination: quote = $quote")
-                        org.json.JSONObject(com.google.gson.Gson().toJson(quote))
+                        JSONObject(com.google.gson.Gson().toJson(quote))
                     }   else if (isPreTicket){
 
                         val orderService = ApiClient.createOrderService(context)
                         val order = orderService.getOrderById(transactionID).data
                         println("Discrimination: order = $order")
-                        org.json.JSONObject(com.google.gson.Gson().toJson(order))
+                        JSONObject(com.google.gson.Gson().toJson(order))
                     } else if (isComanda){
 
                         val orderService = ApiClient.createOrderService(context)
                         val order = orderService.getOrderById(transactionID).data
                         println("Discrimination: order = $order")
-                        org.json.JSONObject(com.google.gson.Gson().toJson(order))
+                        JSONObject(com.google.gson.Gson().toJson(order))
                     } else if (isCierre){
 
                         val cashRegisterService = ApiClient.createCashRegisterService(context)
                         val cashRegister = cashRegisterService.getCashRegisterById(transactionID).data
                         println("Discrimination: cashRegister = $cashRegister")
-                        org.json.JSONObject(com.google.gson.Gson().toJson(cashRegister))
+                        JSONObject(com.google.gson.Gson().toJson(cashRegister))
                     }
 
                     else {
                         val salesService = ApiClient.createSalesService(context)
                         val sale = salesService.getSalesById(transactionID).data
                         println("Discrimination: sale = $sale")
-                        org.json.JSONObject(com.google.gson.Gson().toJson(sale))
+                        JSONObject(com.google.gson.Gson().toJson(sale))
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("Discrimination", "Error fetching data for all jobs with id $transactionID.", e)
