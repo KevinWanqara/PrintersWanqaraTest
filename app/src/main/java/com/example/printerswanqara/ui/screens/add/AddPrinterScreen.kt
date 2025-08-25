@@ -1,5 +1,6 @@
 package com.example.printerswanqara.ui.screens.add
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -100,7 +101,7 @@ fun AddPrinterScreen(navController: NavController) {
     var testFont by remember { mutableStateOf("A") } // Default to "A"
 
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { _ ->
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) {  padding ->
         val animatedProgress by animateFloatAsState(
             targetValue = step / 5f,
             animationSpec = tween(durationMillis = 600)
@@ -114,7 +115,7 @@ fun AddPrinterScreen(navController: NavController) {
             color = Secondary,
             trackColor = Secondary.copy(alpha = 0.2f),
         )
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             // Show impresion.gif from drawable using Accompanist Coil for GIF support
             LaunchedEffect(Unit) { }
 
@@ -726,7 +727,7 @@ fun AddPrinterScreen(navController: NavController) {
 
 
                             if (allSuccess) {
-                                snackbarHostState.showSnackbar("Printer saved successfully for all document types")
+                                snackbarHostState.showSnackbar("Impresora Guardada Correctamente")
                                 // Navigate to home screen after saving
                                 step = 1
                                 printerName = ""
@@ -739,7 +740,7 @@ fun AddPrinterScreen(navController: NavController) {
                                 navController.navigate("list_printers") // Navigate to the home screen
 
                             } else {
-                                snackbarHostState.showSnackbar("Error saving printer for some document types")
+                                snackbarHostState.showSnackbar("Error al guardar la impresora")
                             }
                         }
                     }, colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("Guardar") }

@@ -65,9 +65,9 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
     var selectedType by remember { mutableStateOf("USB") }
     var printerName by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf(0) }
-    var copyNumber by remember { mutableStateOf(0) }
-    var characters by remember { mutableStateOf(0) }
+    var port by remember { mutableIntStateOf(0) }
+    var copyNumber by remember { mutableIntStateOf(0) }
+    var characters by remember { mutableIntStateOf(0) }
     var documentType by remember { mutableStateOf("") }
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
@@ -104,12 +104,14 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
         }
     }
 
+
    Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { _ ->
+    ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
 
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -325,7 +327,7 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                             //val docKeys = docTypeObj.getDocuments().mapNotNull { docTypeObj.findKeyByDocument(it) }
                             var allSuccess = true
                             println(
-                                "Saving printer: $printerName, Mode: ${selectedType}, Characters: $characters, Copies: $copyNumber, Docs: ${documentType}"
+                                "Saving printer: $printerName, Mode: ${selectedType}, Characters: $characters, Copies: $copyNumber, Docs: $documentType"
                             )
 
 

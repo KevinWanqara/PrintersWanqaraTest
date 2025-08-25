@@ -1,10 +1,10 @@
 package com.example.printerswanqara.ui.screens.configure
 
-import android.content.Context
+//import android.content.Context
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
+//import androidx.compose.animation.ExperimentalAnimationApi
+//import androidx.compose.animation.core.tween
+//import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -20,7 +20,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+//import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,7 +33,7 @@ import com.example.printerswanqara.api.Setting
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.FormatListNumbered
+//import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.FormatLineSpacing
@@ -51,13 +51,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.TabRowDefaults
+//import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.WrapText
+//import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
+//import androidx.compose.ui.unit.IntOffset
+//import kotlin.math.roundToInt
 import com.example.printerswanqara.ui.theme.Primary
 
 @Composable
