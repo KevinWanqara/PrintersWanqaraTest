@@ -458,7 +458,7 @@ class PrinterBuilder(private val tipo: String?) {
 
 
                 }
-                if(orderData.optString("type") == "Retiro en local"){
+                if(orderData.optString("type") == "Retiro"){
                     prn.LineasIgual()
                     prn.alineadoIzquierda()
                     prn.agregarTexto("Retiro en local")
@@ -729,7 +729,7 @@ class PrinterBuilder(private val tipo: String?) {
 
                 }
 
-                if(orderData.optString("type") == "Retiro en local"){
+                if(orderData.optString("type") == "Retiro"){
                     prn.LineasIgual()
                     prn.alineadoIzquierda()
                     prn.agregarTexto("Retiro en local")
@@ -1323,9 +1323,7 @@ class PrinterBuilder(private val tipo: String?) {
             val order_prints = orderData.getJSONArray("order_prints")
             println("Order Prints: $order_prints")
             val commandSequential = order_prints.getJSONObject(0).optString("sequential") ?: "N/A"
-            val printDetails = order_prints.getJSONObject(0).getJSONArray("order_print_details")
 
-            println("Print Details: $printDetails")
             prn.agregarTexto("Orden " + (orderData.optString("sequential") ?: "N/A"))
             prn.agregarTexto("$printCode-$commandSequential")
             prn.alineadoIzquierda()
@@ -1338,25 +1336,35 @@ class PrinterBuilder(private val tipo: String?) {
             prn.LineasIgual()
 
 
-            detalles = printDetails
-            for (j in 0 until detalles.length()) {
-                val jo = detalles.getJSONObject(j)
-                val printersArray = jo.optJSONArray("printers")
-                var shouldPrint = false
-                if (printersArray != null) {
-                    for (k in 0 until printersArray.length()) {
-                        val printerObj = printersArray.getJSONObject(k)
-                        if (printerObj.optString("code") == printCode) {
-                            shouldPrint = true
-                            break
+            for (i in 0 until order_prints.length()) {
+                val orderPrint = order_prints.getJSONObject(i)
+                val detalles = orderPrint.optJSONArray("order_print_details") ?: continue
+
+                for (j in 0 until detalles.length()) {
+                    val jo = detalles.getJSONObject(j)
+                    val printersArray = jo.optJSONArray("printers")
+                    var shouldPrint = false
+
+                    if (printersArray != null) {
+                        for (k in 0 until printersArray.length()) {
+                            val printerObj = printersArray.getJSONObject(k)
+                            println("Debug: Printer Object - $printerObj") // Debug: Log the printer object
+                            println("Debug: Current Print Code - $printCode") // Debug: Log the current print code
+                            if (printerObj.optString("code") == printCode) {
+                                shouldPrint = true
+                                println("Debug: Match Found - Printer Code: ${printerObj.optString("code")}") // Debug: Log the match
+                                break
+                            }
                         }
                     }
-                }
-                if (shouldPrint) {
-                    prn.escribirTextoSinSalto(
-                        jo.optString("type") +  jo.optInt("amount") + " " +jo.optString("product_name")
-                    )
-                    prn.agregarSalto()
+
+                    if (shouldPrint) {
+                        println("Debug: Printing Item - ${jo.optString("product_name")} with Amount: ${jo.optInt("amount")}") // Debug: Log the item being printed
+                        prn.escribirTextoSinSalto(
+                            jo.optString("type") + jo.optInt("amount") + " " + jo.optString("product_name")
+                        )
+                        prn.agregarSalto()
+                    }
                 }
             }
             prn.LineasIgual()
