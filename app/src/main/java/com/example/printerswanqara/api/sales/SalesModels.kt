@@ -11,11 +11,6 @@ data class SalesApiResponse(
     val message: String? = null
 )
 
-// Wrapper for the actual sales data
-// Add or adjust fields as needed to match your API
-// UserData should be imported or defined elsewhere
-// If you need more fields, add them here
-// Example fields: id, user, amount, date
 
 data class Sales(
     val date: String,
@@ -42,7 +37,7 @@ data class Sales(
     val subsidiary: Subsidiary,
     val warehouse: Warehouse,
     val customer: Customer?,
-    val payment_account: List<PaymentAccount>,
+    val payment_account: PaymentAccount,
     val taxes: List<Tax>,
     //val edocument: List<EDocument>,
     val settings: Setting,

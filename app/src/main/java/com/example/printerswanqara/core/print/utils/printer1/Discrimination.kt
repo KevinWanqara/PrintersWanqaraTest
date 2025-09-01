@@ -86,10 +86,10 @@ class Discrimination(
                         JSONObject(com.google.gson.Gson().toJson(order))
                     } else if (isComanda){
 
-                        val orderService = ApiClient.createOrderService(context)
-                        val order = orderService.getOrderById(transactionID).data
-                        println("Discrimination: order = $order")
-                        JSONObject(com.google.gson.Gson().toJson(order))
+                        val orderPrintService = ApiClient.createOrderPrintService(context)
+                        val orderPrint = orderPrintService.getOrderPrintById(transactionID).data
+                        println("Discrimination: orderPrint/Comanda = $orderPrint")
+                        JSONObject(com.google.gson.Gson().toJson(orderPrint))
                     } else if (isCierre){
 
                         val cashRegisterService = ApiClient.createCashRegisterService(context)
@@ -99,6 +99,7 @@ class Discrimination(
                     }
 
                     else {
+                        println( "Discrimination: Fetching sale for ID $transactionID" )
                         val salesService = ApiClient.createSalesService(context)
                         val sale = salesService.getSalesById(transactionID).data
                         println("Discrimination: sale = $sale")

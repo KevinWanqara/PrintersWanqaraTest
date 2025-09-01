@@ -15,7 +15,7 @@ import com.example.printerswanqara.api.baseinfo.BaseInfoService
 import com.example.printerswanqara.api.cashRegister.CashRegisterService
 import com.example.printerswanqara.api.order.OrderService
 import com.example.printerswanqara.api.quotes.QuotesService
-
+import com.example.printerswanqara.api.orderPrint.OrderPrintService
 // Data classes for login
 data class LoginRequest(val email: String, val password: String)
 data class LoginResponse(
@@ -134,7 +134,7 @@ interface ApiService {
 }
 
 object ApiClient {
-    private const val BASE_URL = "https://system.wanqara.org/api/v1/"
+    private const val BASE_URL = "https://system.wanqara.app/api/v1/"
 
     // Provide context when building the client
     fun createApiService(context: Context, withTenant: Boolean = true): ApiService {
@@ -332,5 +332,38 @@ object ApiClient {
             .build()
         return retrofit.create(CashRegisterService::class.java)
     }
+
+    fun createOrderPrintService(context: Context): OrderPrintService {
+
+        val client = OkHttpClient.Builder()
+
+            .addInterceptor { chain ->
+                val original: Request = chain.request()
+                val ruc = AppStorage.getRuc(context)
+                val token = AppStorage.getToken(context)
+                println("RUC from storage: $ruc")
+                val requestBuilder = original.newBuilder()
+                    .addHeader("Accept", "application/json")
+                if (ruc != null) {
+                    println("Adding X-tenant header with RUC: $ruc")
+                    requestBuilder.addHeader("X-tenant", ruc.trim())
+                }
+                if (token != null) {
+                    println("Adding Authorization header with token: $token")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    println("No token found, Authorization header not added")
+                }
+                chain.proceed(requestBuilder.build())
+            }
+            .build()
+        val retrofit = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+        return retrofit.create(OrderPrintService::class.java)
+    }
+
 
 }

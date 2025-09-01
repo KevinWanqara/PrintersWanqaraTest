@@ -416,7 +416,7 @@ class PrinterBuilder(private val tipo: String?) {
 
                 prn.agregarCaracteresDerecha(
                     10,
-                    df.format(js.getDouble("change_amount")).replace("-", "")
+                    df.format(js.optDouble("change_amount" ,0.0 )).replace("-", "")
                 )
 
                 prn.agregarSalto()
@@ -684,7 +684,7 @@ class PrinterBuilder(private val tipo: String?) {
 
                 prn.agregarCaracteresDerecha(
                     10,
-                    df.format(js.getDouble("change_amount")).replace("-", "")
+                    df.format(js.optDouble("change_amount" ,0.0)).replace("-", "")
                 )
                 prn.agregarSalto()
                 val observation = js.optString("observation", "")

@@ -342,7 +342,6 @@ fun AddPrinterScreen(navController: NavController) {
                 }
 
             }
-
             //Step 2 : Test Font
             if (step == 2) {
 
