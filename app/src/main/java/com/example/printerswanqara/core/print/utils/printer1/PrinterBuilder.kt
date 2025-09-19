@@ -33,6 +33,10 @@ import androidx.core.content.edit
 
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.TimeZone
+import kotlin.text.format
+
+
 class PrinterBuilder(private val tipo: String?) {
 
     private var socketBluetooth: BluetoothSocket? = null
@@ -1304,12 +1308,8 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.lineHeight()
             }
             prn.alineadoCentro()
-            val orderData = if (js.has("order")) {
-                js.getJSONObject("order")
-            } else {
-                js
-            }
-            println("Order Data: $orderData")
+            val orderData = js
+            println("Order Print Data: $orderData")
 
 
             //Font selection based on printerConfig
@@ -1323,28 +1323,34 @@ class PrinterBuilder(private val tipo: String?) {
 
             }
 
-            val order_prints = orderData.getJSONArray("order_prints")
+            val order_prints = orderData.getJSONArray("order_print_details")
             println("Order Prints: $order_prints")
-            val commandSequential = order_prints.getJSONObject(0).optString("sequential") ?: "N/A"
+            val commandSequential = orderData.optString("sequential") ?: "N/A"
 
-            prn.agregarTexto("Orden " + (orderData.optString("sequential") ?: "N/A"))
+            prn.agregarTexto("Orden " + (orderData.optJSONObject("order")?.optString("sequential") ?: "N/A"))
             prn.agregarTexto("$printCode-$commandSequential")
             prn.alineadoIzquierda()
 
             prn.agregarSalto()
-            prn.agregarTexto("Mesero: " + (orderData.optString("waiter") ?: "N/A"))
+            prn.agregarTexto("Mesero: " + (orderData.optString("responsible_name") ?: "N/A"))
 
-            prn.agregarTexto("Comensales: " + (orderData.optString("pax") ?: "N/A"))
+            val isoDate = orderData.optString("created_at")
+            val formattedDate = try {
+                val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault())
+                parser.timeZone = TimeZone.getTimeZone("UTC")
+                val date = parser.parse(isoDate)
+                val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+                formatter.format(date)
+            } catch (e: Exception) {
+                "N/A"
+            }
+            prn.agregarTexto("Fecha: $formattedDate")
+            prn.agregarTexto("Comensales: " + (orderData.optJSONObject("order")?.optJSONObject("table")?.optString("pax") ?: "N/A"))
 
             prn.LineasIgual()
 
-
-            for (i in 0 until order_prints.length()) {
-                val orderPrint = order_prints.getJSONObject(i)
-                val detalles = orderPrint.optJSONArray("order_print_details") ?: continue
-
-                for (j in 0 until detalles.length()) {
-                    val jo = detalles.getJSONObject(j)
+                for (j in 0 until order_prints.length()) {
+                    val jo = order_prints.getJSONObject(j)
                     val printersArray = jo.optJSONArray("printers")
                     var shouldPrint = false
 
@@ -1367,9 +1373,34 @@ class PrinterBuilder(private val tipo: String?) {
                             jo.optString("type") + jo.optInt("amount") + " " + jo.optString("product_name")
                         )
                         prn.agregarSalto()
+
+
+
+                        val additionalInformationArr = try { jo.optJSONArray("additional_information") } catch (e: Exception) { null }
+                        if (additionalInformationArr != null) {
+                            for (i in 0 until additionalInformationArr.length()) {
+                                val infoObj = additionalInformationArr.optJSONObject(i)
+                                val observationsArr = infoObj?.optJSONArray("observations")
+                                if (observationsArr != null) {
+                                    for (idx in 0 until observationsArr.length()) {
+                                        val obs = observationsArr.optJSONObject(idx)?.optString("item") ?: continue
+                                        prn.escribirTextoSinSalto("Observación: "+obs)
+                                        prn.agregarSalto()
+                                    }
+                                }
+                                val extrasArr = infoObj?.optJSONArray("extras")
+                                if (extrasArr != null) {
+                                    for (idx in 0 until extrasArr.length()) {
+                                        val extra = extrasArr.optJSONObject(idx)?.optString("item") ?: continue
+                                        prn.escribirTextoSinSalto("Extra: "+extra)
+                                        prn.agregarSalto()
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
+
             prn.LineasIgual()
 
             prn.negritaOn()

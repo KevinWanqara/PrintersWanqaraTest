@@ -89,12 +89,14 @@ fun ConfigurePrinterScreen() {
                 selectedTabIndex = selectedTabIndex,
                 //containerColor = Primary,
                 //contentColor = Primary,
+
                 indicator = { tabPositions ->
                     SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
                         color = Primary
                     )
                 }
+
             ) {
                 printerTabs.forEachIndexed { index, tabTitle ->
                     Tab(
@@ -105,8 +107,8 @@ fun ConfigurePrinterScreen() {
                         },
                         text = { Text(tabTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         //icon = { Icon(Icons.Filled.Print, contentDescription = null) },
-                        selectedContentColor = Primary,
-                        unselectedContentColor = Color.Black
+                        selectedContentColor = Primary
+
                     )
                 }
             }
