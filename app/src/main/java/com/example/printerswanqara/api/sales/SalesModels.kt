@@ -54,6 +54,7 @@ data class Sales(
     val change_amount : Double?,
     val inventory_records: List<SaleInventoryRecord>?,
     val order : Order,
+    val additional_tip : Double?,
 
     )
 
@@ -148,13 +149,23 @@ data class Detail(
     val discount: Double,
     val total: Double,
     val description: String,
-    val additional_information: String,
+    val additional_information: List<AdditionalInformation>,
     val spent: Boolean,
     val product: Product,
     val product_id: String,
     val total_amount: Double?,
     val pending_amount: Double?,
     val moved_stock_amount: Double?
+)
+
+data class AdditionalInformation(
+    val observations: List<String>,
+    val extras: List<Extra>
+)
+
+data class Extra(
+    val id: String,
+    val item: String
 )
 
 data class Subsidiary(

@@ -34,7 +34,10 @@ import androidx.core.content.edit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.TimeZone
+import kotlin.compareTo
 import kotlin.text.format
+import kotlin.times
+import kotlin.toString
 
 
 class PrinterBuilder(private val tipo: String?) {
@@ -334,13 +337,23 @@ class PrinterBuilder(private val tipo: String?) {
                     prn.escribirTextoSinSalto("Vendedor: ")
                     prn.escribirTextoSinSalto(js.getJSONObject("user").optString("name"))
                 }
-
+                prn.agregarSalto()
                 val order = js.optJSONObject("order")
                 if (order != null) {
                     prn.escribirTextoSinSalto("Orden: ")
 
                     prn.escribirTexto(order.optString("sequential", "N/A"))
+
+                    val turn = order.optString("turn", "")
+                    if (turn.isNotEmpty()) {
+                        prn.escribirTextoSinSalto("Turno: ")
+
+                        prn.escribirTexto(order.optString("turn", "N/A"))
+
+                    }
+                    prn.agregarSalto()
                 }
+
                 prn.LineasGuion()
                 prn.escribirTextoSinSalto("Cant Descripción")
                 prn.agregarCaracteres((caracteres - 26).coerceAtLeast(0), "")
@@ -408,12 +421,14 @@ class PrinterBuilder(private val tipo: String?) {
                     prn.agregarCaracteresDerecha(10, df.format(dl.getDouble("amount")))
                     prn.agregarSalto()
                 }
+
+
                 //agregar total
                 prn.escribirTextoSinSalto("Total:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Entrega:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
                 prn.agregarSalto()
 
                 prn.escribirTextoSinSalto("Cambio:")
@@ -422,7 +437,22 @@ class PrinterBuilder(private val tipo: String?) {
                     10,
                     df.format(js.optDouble("change_amount" ,0.0 )).replace("-", "")
                 )
+                prn.agregarSalto()
 
+
+                //Imprimir Propina
+                val additional_tip = js.optString("additional_tip", "")
+                if (!additional_tip.isNullOrEmpty()) {
+                    prn.escribirTextoSinSalto("Propina:")
+                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("additional_tip")))
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Total + Propina :")
+
+                    val totalWithTip = js.getDouble("total") + js.getDouble("additional_tip")
+                    prn.agregarCaracteresDerecha(10, df.format(totalWithTip))
+                    prn.agregarSalto()
+
+                }
                 prn.agregarSalto()
                 val observation = js.optString("observation", "")
                 if (!observation.isNullOrEmpty()) {
@@ -473,7 +503,21 @@ class PrinterBuilder(private val tipo: String?) {
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
                 }
-                prn.feedFinal()
+
+                if(tipo == PrinterType.BLUETOOTH.type) {
+                    prn.feed(6)
+                }else {
+                    if (lineSpacing == true ) {
+                        println("Setting line spacing applied")
+                        prn.feed(7)
+                    }else {
+                        println("Setting default line spacing")
+
+                        prn.feed(14)
+                    }
+                }
+
+
                 prn.cortar()
 
                 enviarImprimir(prn.getTrabajo())
@@ -604,11 +648,22 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
 
                 val order = js.optJSONObject("order")
+
                 if (order != null) {
                     prn.escribirTextoSinSalto("Orden: ")
 
                     prn.escribirTexto(order.optString("sequential", "N/A"))
+
+                    val turn = order.optString("turn", "")
+                    if (turn.isNotEmpty()) {
+                        prn.escribirTextoSinSalto("Turno: ")
+
+                        prn.escribirTexto(order.optString("turn", "N/A"))
+
+                    }
+                    prn.agregarSalto()
                 }
+
                 prn.LineasGuion()
                 prn.escribirTextoSinSalto("Cant Descripción")
                 prn.agregarCaracteres((caracteres - 26).coerceAtLeast(0), "")
@@ -676,12 +731,14 @@ class PrinterBuilder(private val tipo: String?) {
 
 // Print IVA sorted by rate
 
+
+
                 //agregar total
                 prn.escribirTextoSinSalto("Total:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Entrega:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
                 prn.agregarSalto()
 
                 prn.escribirTextoSinSalto("Cambio:")
@@ -691,6 +748,19 @@ class PrinterBuilder(private val tipo: String?) {
                     df.format(js.optDouble("change_amount" ,0.0)).replace("-", "")
                 )
                 prn.agregarSalto()
+                //Imprimir Propina
+                val additional_tip = js.optString("additional_tip", "")
+                if (!additional_tip.isNullOrEmpty()) {
+                    prn.escribirTextoSinSalto("Propina:")
+                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("additional_tip")))
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Total + Propina :")
+
+                    val totalWithTip = js.getDouble("total") + js.getDouble("additional_tip")
+                    prn.agregarCaracteresDerecha(10, df.format(totalWithTip))
+                    prn.agregarSalto()
+
+                }
                 val observation = js.optString("observation", "")
                 if (!observation.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce(observation)
@@ -1180,28 +1250,28 @@ class PrinterBuilder(private val tipo: String?) {
                 detalles = js.getJSONArray("details")
                 for (j in 0 until detalles.length()) {
                     jo = detalles.getJSONObject(j)
+                    if (jo.optDouble("pending_amount", 0.0) != 0.0) {
+                        val product = jo.getJSONObject("product")
+                        val basePrice = product.optDouble("price")
 
-                    val product = jo.getJSONObject("product")
-                    val basePrice = product.optDouble("price")
+                        val taxesArray = product.optJSONArray("taxes")
+                        val taxRate = if (taxesArray != null && taxesArray.length() > 0) {
+                            taxesArray.getJSONObject(0).optDouble("rate", 0.0)
+                        } else {
+                            0.0
+                        }
+                        val taxedPrice = basePrice * (1 + taxRate / 100)
 
-                    val taxesArray = product.optJSONArray("taxes")
-                    val taxRate = if (taxesArray != null && taxesArray.length() > 0) {
-                        taxesArray.getJSONObject(0).optDouble("rate", 0.0)
-                    } else {
-                        0.0
-                    }
-                    val taxedPrice = basePrice * (1 + taxRate / 100)
-
-                    prn.agregarTexto(
-                        prn.lineaDetails(
-
-                            jo.optString("amount"),
-                            jo.getJSONObject("product").optString("name"),
-                            taxedPrice.toString(),
-                            jo.optString("total_amount"),
-                            caracteres
+                        prn.agregarTexto(
+                            prn.lineaDetails(
+                                jo.optString("amount"),
+                                jo.getJSONObject("product").optString("name"),
+                                taxedPrice.toString(),
+                                jo.optString("total_amount"),
+                                caracteres
+                            )
                         )
-                    )
+                    }
                 }
                 prn.LineasIgual()
 

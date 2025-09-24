@@ -79,10 +79,6 @@ data class AttributeValue(
     val additional_information: List<AdditionalInformation>? = null
 )
 
-data class AdditionalInformation(
-    val value: String,
-    val label: String
-)
 
 data class WarehouseInventory(
     val id: String,

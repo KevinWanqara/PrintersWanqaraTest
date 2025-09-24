@@ -16,6 +16,8 @@ import com.example.printerswanqara.api.cashRegister.CashRegisterService
 import com.example.printerswanqara.api.order.OrderService
 import com.example.printerswanqara.api.quotes.QuotesService
 import com.example.printerswanqara.api.orderPrint.OrderPrintService
+
+import com.example.printerswanqara.BuildConfig
 // Data classes for login
 data class LoginRequest(val email: String, val password: String)
 data class LoginResponse(
@@ -134,8 +136,10 @@ interface ApiService {
 }
 
 object ApiClient {
-    private const val BASE_URL = "https://system.wanqara.app/api/v1/"
+    private const val BASE_URL = BuildConfig.BASE_URL
 
+    //private const val BASE_URL = https://system.wanqara.org/api/v1/
+    //private const val BASE_URL = https://system.wanqara.app/api/v1/
     // Provide context when building the client
     fun createApiService(context: Context, withTenant: Boolean = true): ApiService {
         val client = OkHttpClient.Builder()

@@ -10,6 +10,7 @@ plugins {
 android {
     namespace = "com.example.printerswanqara"
     compileSdk = 35
+    buildFeatures.buildConfig = true
 
     defaultConfig {
         applicationId = "com.example.printerswanqara"
@@ -22,7 +23,17 @@ android {
     }
 
     buildTypes {
+        debug{
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-DEBUG"
+            buildConfigField("String", "BASE_URL", "\"https://system.wanqara.org/api/v1/\"")
+
+        }
         release {
+            applicationIdSuffix = ".release"
+            versionNameSuffix = "-RELEASE"
+            buildConfigField("String", "BASE_URL", "\"https://system.wanqara.app/api/v1/\"")
+
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
