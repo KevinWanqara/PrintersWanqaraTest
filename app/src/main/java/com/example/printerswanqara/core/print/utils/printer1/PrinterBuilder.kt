@@ -216,6 +216,7 @@ class PrinterBuilder(private val tipo: String?) {
 
 
             var detalles: JSONArray
+            var paymentMethods : JSONArray
 
             var jo: JSONObject
 
@@ -422,7 +423,15 @@ class PrinterBuilder(private val tipo: String?) {
                     prn.agregarSalto()
                 }
 
+                //Imprimir Propina
+                val additional_tip = js.optString("additional_tip", "")
+                if (!additional_tip.isNullOrEmpty()) {
+                    prn.escribirTextoSinSalto("Propina:")
+                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("additional_tip")))
+                    prn.agregarSalto()
 
+
+                }
                 //agregar total
                 prn.escribirTextoSinSalto("Total:")
                 prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
@@ -440,20 +449,39 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
 
 
-                //Imprimir Propina
-                val additional_tip = js.optString("additional_tip", "")
-                if (!additional_tip.isNullOrEmpty()) {
-                    prn.escribirTextoSinSalto("Propina:")
-                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("additional_tip")))
-                    prn.agregarSalto()
-                    prn.escribirTextoSinSalto("Total + Propina :")
+                paymentMethods = js.getJSONArray("payment_methods")
 
-                    val totalWithTip = js.getDouble("total") + js.getDouble("additional_tip")
-                    prn.agregarCaracteresDerecha(10, df.format(totalWithTip))
+                prn.LineasGuion()
+                prn.alineadoIzquierda()
+                prn.escribirTextoSinSalto("Formas de Pago")
+                prn.agregarSalto()
+                prn.LineasIgual()
+
+                for (j in 0 until paymentMethods.length()) {
+                    jo = paymentMethods.getJSONObject(j)
+
+                    val name = jo.optString("name")
+                    val amount = df.format(jo.optDouble("amount", 0.0))
+
+
+
+                    prn.escribirTextoSinSalto(name )
+                    val nameLength = name.length
+                    val amountLength = amount.length
+
+                    prn.agregarCaracteres((caracteres - nameLength-amountLength).coerceAtLeast(0), "")
+                    prn.escribirTextoSinSalto(amount)
+
                     prn.agregarSalto()
 
                 }
-                prn.agregarSalto()
+
+
+                prn.LineasGuion()
+
+
+
+
                 val observation = js.optString("observation", "")
                 if (!observation.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce(observation)
@@ -537,6 +565,7 @@ class PrinterBuilder(private val tipo: String?) {
         try {
             if (js == null) return
             var detalles: JSONArray
+            var paymentMethods : JSONArray
             var jo: JSONObject
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
             println("Printer Config: $printerConfig")
@@ -730,7 +759,14 @@ class PrinterBuilder(private val tipo: String?) {
 
 
 // Print IVA sorted by rate
+                //Imprimir Propina
+                val additional_tip = js.optString("additional_tip", "")
+                if (!additional_tip.isNullOrEmpty()) {
+                    prn.escribirTextoSinSalto("Propina:")
+                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("additional_tip")))
+                    prn.agregarSalto()
 
+                }
 
 
                 //agregar total
@@ -748,19 +784,35 @@ class PrinterBuilder(private val tipo: String?) {
                     df.format(js.optDouble("change_amount" ,0.0)).replace("-", "")
                 )
                 prn.agregarSalto()
-                //Imprimir Propina
-                val additional_tip = js.optString("additional_tip", "")
-                if (!additional_tip.isNullOrEmpty()) {
-                    prn.escribirTextoSinSalto("Propina:")
-                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("additional_tip")))
-                    prn.agregarSalto()
-                    prn.escribirTextoSinSalto("Total + Propina :")
+                paymentMethods = js.getJSONArray("payment_methods")
 
-                    val totalWithTip = js.getDouble("total") + js.getDouble("additional_tip")
-                    prn.agregarCaracteresDerecha(10, df.format(totalWithTip))
+                prn.LineasGuion()
+                prn.alineadoIzquierda()
+                prn.escribirTextoSinSalto("Formas de Pago")
+                prn.agregarSalto()
+                prn.LineasIgual()
+
+                for (j in 0 until paymentMethods.length()) {
+                    jo = paymentMethods.getJSONObject(j)
+
+                    val name = jo.optString("name")
+                    val amount = df.format(jo.optDouble("amount", 0.0))
+
+
+
+                    prn.escribirTextoSinSalto(name )
+                    val nameLength = name.length
+                    val amountLength = amount.length
+
+                    prn.agregarCaracteres((caracteres - nameLength-amountLength).coerceAtLeast(0), "")
+                    prn.escribirTextoSinSalto(amount)
+
                     prn.agregarSalto()
 
                 }
+
+
+                prn.LineasGuion()
                 val observation = js.optString("observation", "")
                 if (!observation.isNullOrEmpty()) {
                     prn.alineadoIzquierdaForce(observation)
