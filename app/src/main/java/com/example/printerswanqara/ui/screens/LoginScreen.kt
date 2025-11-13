@@ -68,7 +68,7 @@ fun LoginScreen(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(if (isLargeScreen) 0.4f else 0.9f)
+                .fillMaxWidth(if (isLargeScreen) 0.7f else 0.9f)
                 .wrapContentHeight()
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally

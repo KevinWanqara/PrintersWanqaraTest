@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,6 +53,13 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Settings
 import com.example.printerswanqara.api.ApiClient
 
+// Added imports for annotated string styling
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontWeight
+import com.example.printerswanqara.DiagnosticsScreen
+
 class MainActivity : ComponentActivity() {
     //Main Activity
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -66,10 +74,15 @@ class MainActivity : ComponentActivity() {
                 var isLoggedIn by remember { mutableStateOf(false) }
                 var isDomainValidated by remember { mutableStateOf(false) }
                 val tokenDb = remember { TokenDatabaseHelper(context) }
+                // replace unused savedRuc with a rememberSaveable state so it survives configuration changes
+                val rucState = rememberSaveable { mutableStateOf(AppStorage.getRuc(context) ?: "") }
+
                 // Check for token and RUC on launch
                 LaunchedEffect(Unit) {
-                    val ruc = AppStorage.getRuc(context)
-                    isDomainValidated = !ruc.isNullOrBlank()
+                    val rucFromStorage = AppStorage.getRuc(context) ?: ""
+
+                    isDomainValidated = !rucFromStorage.isNullOrBlank()
+                    rucState.value = rucFromStorage
                     isLoggedIn = tokenDb.getToken() != null
 
                     if (isLoggedIn) {
@@ -77,6 +90,8 @@ class MainActivity : ComponentActivity() {
                             val response = baseInfoService.getBaseInfo().data // Replace with the actual method
                             println("Saving Base Info: $response")
                             AppStorage.saveSettings(context, response) // Save the data locally
+                            // Update rucState after saving settings
+                            rucState.value = AppStorage.getRuc(context) ?: ""
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -90,11 +105,14 @@ class MainActivity : ComponentActivity() {
                             onDomainValidated = {
                                 isDomainValidated = true
                                 isLoggedIn = false
+                                // Refresh the RUC state after domain validation completes
+                                rucState.value = AppStorage.getRuc(context) ?: ""
 
                             },
                             logoResId = R.drawable.ic_wanqara_logo_foreground
-
+                            // Update rucState after domain validation
                         )
+                        //rucState.value = AppStorage.getRuc(context) ?: ""
                     }
 
                     !isLoggedIn -> {
@@ -102,6 +120,8 @@ class MainActivity : ComponentActivity() {
                             onLoginSuccess = { token ->
                                 tokenDb.saveToken(token)
                                 isLoggedIn = true
+                                // Refresh rucState after successful login
+                                rucState.value = AppStorage.getRuc(context) ?: ""
                             },
                             onDomainValidationRequested = {
                                 isDomainValidated = false
@@ -122,15 +142,36 @@ class MainActivity : ComponentActivity() {
                                             "add_printer" -> Text("Agregar", color = Color.White)
                                             "edit_printer/{printerId}" -> Text("Actualizar", color = Color.White)
                                             "list_printers", null -> {
-                                                Row(verticalAlignment = Alignment.CenterVertically ) {
-                                                    Icon(
-                                                        painterResource(id = R.drawable.ic_wanqara_logo_foreground),
-                                                        contentDescription = "Wanqara Logo",
-                                                        modifier = Modifier.size(32.dp),
-                                                        tint = Color.White
-                                                    )
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Text("Wanqara Printers", color = Color.White)
+                                                Column(
+                                                    verticalArrangement = Arrangement.Center,
+                                                    horizontalAlignment = Alignment.Start,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Icon(
+                                                            painterResource(id = R.drawable.ic_wanqara_logo_foreground),
+                                                            contentDescription = "Wanqara Logo",
+                                                            modifier = Modifier.size(32.dp),
+                                                            tint = Color.White
+                                                        )
+                                                        Spacer(Modifier.width(8.dp))
+                                                        Text("Wanqara Printers", color = Color.White)
+                                                    }
+                                                    Spacer(Modifier.height(4.dp))
+                                                    // show a styled message using the reactive rucState; it will update when rucState.value changes
+                                                    rucState.value.takeIf { it.isNotBlank() }?.let { ruc ->
+                                                        Text(
+                                                            text = buildAnnotatedString {
+
+                                                                withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
+                                                                    append(ruc)
+                                                                }
+
+                                                            },
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = Color.White
+                                                        )
+                                                    }
                                                 }
                                             }
                                             else -> Text("")
@@ -217,6 +258,15 @@ class MainActivity : ComponentActivity() {
                                                     }
 
                                                 )
+                                                // New diagnostics menu item
+                                                DropdownMenuItem(
+                                                    text = { Text("Diagnosticar impresora") },
+                                                    leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = "diagnostics") },
+                                                    onClick = {
+                                                        profileMenuExpanded = false
+                                                        navController.navigate("diagnostics")
+                                                    }
+                                                )
                                                 DropdownMenuItem(
 
                                                     text = { Text("Cerrar Sesión") },
@@ -267,6 +317,8 @@ class MainActivity : ComponentActivity() {
                                     navController
                                 ) }
                                 composable("configure_printer") { ConfigurePrinterScreen() }
+                                // New diagnostics route - implemented in DiagnosticsScreen.kt
+                                composable("diagnostics") { DiagnosticsScreen(navController) }
                                 composable("printer_test") { PrinterTestScreen() }
                                 composable("message") { MessageScreen() }
                             }

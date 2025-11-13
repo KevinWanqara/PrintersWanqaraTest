@@ -1,7 +1,7 @@
 [versions]
 accompanistNavigationAnimation = "0.34.0"
 accompanistPermissions = "0.34.0-alpha"
-agp = "8.10.1"
+agp = "8.13.1"
 escposCoffee = "4.1.0"
 escposThermalprinterAndroid = "3.3.0"
 kotlin = "2.0.21"

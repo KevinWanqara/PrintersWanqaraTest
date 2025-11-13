@@ -21,6 +21,7 @@ class Discrimination(
     private var printerBuilder: PrinterBuilder? = null
 
     private fun setup(document: String , commands: Array<String>) {
+        val start = System.currentTimeMillis()
         android.util.Log.d("Discrimination", "setup() called with document: $document")
         printer = allPrinters.find {
             it.documentType == document
@@ -48,6 +49,8 @@ class Discrimination(
             android.util.Log.e("Discrimination", "No printer found for document: $document")
             printerBuilder = null
         }
+        val dur = System.currentTimeMillis() - start
+        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(document, "setup", dur, printerBuilder != null))
     }
 
     suspend operator fun invoke(commands: Array<String>): Boolean {
@@ -70,6 +73,7 @@ class Discrimination(
         val isComanda = mainCommand.startsWith("IMPRESION_COMANDA")
         val isCierre = mainCommand == "IMPRESION_CIERRE_CAJA"
         println("Discrimination: isCotizacion = $isCotizacion")
+        val fetchStart = System.currentTimeMillis()
         val transactionObject = if (!transactionID.isNullOrEmpty()) {
             withContext(Dispatchers.IO) {
                 try {
@@ -111,6 +115,8 @@ class Discrimination(
                 }
             }
         } else null
+        val fetchDur = System.currentTimeMillis() - fetchStart
+        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(mainCommand, "fetch-data", fetchDur, transactionObject != null || transactionID.isNullOrEmpty()))
         println("Discrimination: transactionObject = $transactionObject")
 
         // Only proceed with print jobs if saleJsonObject is received
@@ -133,6 +139,7 @@ class Discrimination(
             android.util.Log.d("Discrimination", "After API call: jsonObject is ${if (jsonObject != null) "NOT NULL" else "NULL"}")
             if (printerBuilder != null && jsonObject != null) {
                 try {
+                    val phaseStart = System.currentTimeMillis()
                     when (command) {
                         "IMPRESION_FACTURA_ELECTRONICA" -> {
                             android.util.Log.d(
@@ -237,6 +244,8 @@ class Discrimination(
                             errorCommand = errorCommand.plus(command)
                         }
                     }
+                    val phaseDur = System.currentTimeMillis() - phaseStart
+                    PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(command, "print-command", phaseDur, true))
                     // Ensure USB jobs are flushed and delayed between jobs
                     if (printerBuilder?.usbOutputStream != null) {
                         printerBuilder?.usbOutputStream?.flush()
@@ -274,6 +283,7 @@ class Discrimination(
         } else {
             context.getSharedPreferences("asd", 0).edit().putStringSet("Commands", setOf()).apply()
         }
+        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(mainCommand, "overall", 0L, errorCount==0, "errors=$errorCount"))
         return errorCount == 0
     }
 }

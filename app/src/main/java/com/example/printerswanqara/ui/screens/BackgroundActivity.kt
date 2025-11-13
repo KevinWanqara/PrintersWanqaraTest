@@ -19,13 +19,35 @@ import com.example.printerswanqara.core.print.utils.printer1.Discrimination
 import com.example.printerswanqara.domain.services.GetAllPrinters
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+// Added imports for diagnostics
+import com.example.printerswanqara.core.print.utils.printer1.PrinterBuilder
+import com.example.printerswanqara.core.print.utils.printer1.PrintDiagnosticsBus
 
 class BackgroundActivity : ComponentActivity() {
 
+    // Hold references to listeners to detach later
+    private var transportListener: ((PrinterBuilder.PrinterDiagnosticsEvent) -> Unit)? = null
+    private var phaseListener: ((PrintDiagnosticsBus.PhaseEvent) -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("BackgroundActivity", "onCreate called")
+
+        // Subscribe to diagnostics so background prints are persisted to logs
+        transportListener = { evt ->
+            val ms = evt.endTimestamp - evt.startTimestamp
+            val status = if (evt.success) "✅" else "❌"
+            val line = "$status JOB transporte=${evt.transportType} destino=${evt.address ?: "-"}:${evt.port ?: "-"} bytes=${evt.bytesLength} tiempo=${ms}ms${evt.errorMessage?.let { " error=$it" } ?: ""}".trim()
+            PrintDiagnosticsBus.appendPersistentLog(this, line)
+        }
+        PrinterBuilder.diagnosticsListener = transportListener
+
+        phaseListener = { evt ->
+            val line = "⏱ Fase ${evt.phase} doc=${evt.documentType} dur=${evt.durationMs}ms ok=${evt.success} ${evt.extra ?: ""}".trim()
+            PrintDiagnosticsBus.appendPersistentLog(this, line)
+        }
+        PrintDiagnosticsBus.phaseListener = phaseListener
+
         setContent {
             // GIF-enabled ImageLoader for Coil
             val gifEnabledLoader = remember(this) {
@@ -69,21 +91,38 @@ class BackgroundActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // Detach listeners if still attached
+        if (PrinterBuilder.diagnosticsListener === transportListener) {
+            PrinterBuilder.diagnosticsListener = null
+        }
+        if (PrintDiagnosticsBus.phaseListener === phaseListener) {
+            PrintDiagnosticsBus.phaseListener = null
+        }
+    }
+
     private suspend fun print(): Boolean {
         Log.d("BackgroundActivity", "print() called")
         var result = true
+        val jobStart = System.currentTimeMillis()
         try {
             val intent = intent
             val uri = intent.data
             Log.d("BackgroundActivity", "Intent URI: $uri")
+            PrintDiagnosticsBus.appendPersistentLog(this, "JOB_START uri=${uri}")
+
             // Expecting schema: wanqaraprintermobile://IMPRESION_FACTURA_ELECTRONICA,${'$'}{sale.id}"
             val saleId = uri?.schemeSpecificPart?.split(",")?.getOrNull(1)
             Log.d("BackgroundActivity", "Parsed saleId: $saleId")
+            PrintDiagnosticsBus.appendPersistentLog(this, "SCHEMA_PARSE saleId=${saleId}")
 
             val data = uri?.schemeSpecificPart
             Log.d("BackgroundActivity", "Raw schemeSpecificPart data: $data")
+            PrintDiagnosticsBus.appendPersistentLog(this, "SCHEMA_DATA data=${data}")
             if (data.isNullOrBlank()) {
                 Log.e("BackgroundActivity", "No data found in intent URI. Aborting print.")
+                PrintDiagnosticsBus.appendPersistentLog(this, "JOB_FAIL reason=no_data_in_uri")
                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                     android.widget.Toast.makeText(this@BackgroundActivity, "No print data found", android.widget.Toast.LENGTH_LONG).show()
                 }
@@ -91,6 +130,7 @@ class BackgroundActivity : ComponentActivity() {
             }
             val commands = data.split(",")
             Log.d("BackgroundActivity", "Parsed commands: ${commands}")
+            PrintDiagnosticsBus.appendPersistentLog(this, "COMMANDS ${commands.joinToString("|")}")
 
             try {
                 Log.d("BackgroundActivity", "Getting database instance...")
@@ -102,31 +142,27 @@ class BackgroundActivity : ComponentActivity() {
                 Log.d("BackgroundActivity", "GetAllPrinters created: $getAllPrinters")
                 val printers = getAllPrinters.getAll()
                 Log.d("BackgroundActivity", "Fetched printers: ${printers.size} found")
-                val commandList = mutableListOf<String>()
-                if (commands.isNotEmpty()) {
-                    // Remove all leading slashes from main command if present
-                    val mainCommand = commands[0].trimStart('/')
-                    commandList.add(mainCommand)
-                    if (commands.size > 2) {
-                        // Add all additional commands, trimming any leading slashes
-                        commandList.addAll(commands.subList(2, commands.size).map { it.trimStart('/') })
-                    }
-                }
-                // Instead of splitting and looping, just pass the commands array to Discrimination
+                PrintDiagnosticsBus.appendPersistentLog(this, "PRINTERS size=${printers.size}")
+
+                // Prepare commands array for Discrimination
                 val commandsArray = commands.map { it.trimStart('/') }.toTypedArray()
+                val discStart = System.currentTimeMillis()
                 val resultDiscrimination = Discrimination(printers, this).invoke(commandsArray)
+                val discMs = System.currentTimeMillis() - discStart
+                PrintDiagnosticsBus.appendPersistentLog(this, "DISCRIMINATION done=${resultDiscrimination} dur=${discMs}ms")
+
                 if (!resultDiscrimination) {
                     withContext(kotlinx.coroutines.Dispatchers.Main) {
                         android.widget.Toast.makeText(this@BackgroundActivity, "Error al imprimir una o mas impresoras ", android.widget.Toast.LENGTH_SHORT).show()
-
                         kotlin.system.exitProcess(-1)
                     }
+                    result = false
                 }
-                //result = resultDiscrimination
             } catch (e: Exception) {
                 Log.e("BackgroundActivity", "Exception fetching printers: ${e.message}", e)
                 Log.e("BackgroundActivity", "Exception stack trace:", e)
                 Log.e("BackgroundActivity", "Commands at error: ${commands}")
+                PrintDiagnosticsBus.appendPersistentLog(this, "JOB_EXCEPTION step=db_or_print msg=${e.message}")
                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                     android.widget.Toast.makeText(this@BackgroundActivity, "Error fetching printers: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                 }
@@ -134,10 +170,13 @@ class BackgroundActivity : ComponentActivity() {
             }
         } catch (e: InterruptedException) {
             Log.e("BackgroundActivity", "InterruptedException: ${'$'}e")
+            PrintDiagnosticsBus.appendPersistentLog(this, "JOB_INTERRUPTED msg=${e.message}")
             android.widget.Toast.makeText(this, "Error al imprimir", android.widget.Toast.LENGTH_SHORT).show()
             result = false
             return false
         } finally {
+            val jobMs = System.currentTimeMillis() - jobStart
+            PrintDiagnosticsBus.appendPersistentLog(this, "JOB_END success=${result} dur=${jobMs}ms")
             val isUsbPermissionSending =
                 application.getSharedPreferences("usb", 0).getBoolean("permissions", false)
             if (result && !isUsbPermissionSending) {
@@ -146,7 +185,7 @@ class BackgroundActivity : ComponentActivity() {
                 kotlin.system.exitProcess(-1)
             }
         }
-        return true
+        return result
     }
 
 }

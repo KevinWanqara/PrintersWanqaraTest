@@ -41,6 +41,21 @@ import kotlin.toString
 
 
 class PrinterBuilder(private val tipo: String?) {
+    companion object {
+        @Volatile
+        var diagnosticsListener: ((event: PrinterDiagnosticsEvent) -> Unit)? = null
+    }
+
+    data class PrinterDiagnosticsEvent(
+        val transportType: String,
+        val address: String?,
+        val port: Int?,
+        val bytesLength: Int,
+        val startTimestamp: Long,
+        val endTimestamp: Long,
+        val success: Boolean,
+        val errorMessage: String? = null
+    )
 
     private var socketBluetooth: BluetoothSocket? = null
     private var streamBluetooth: OutputStream? = null
@@ -528,6 +543,7 @@ class PrinterBuilder(private val tipo: String?) {
                 }
 
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
+
                 for (j in 0 until line_breaks) {
                     prn.agregarSalto()
                 }
@@ -1023,7 +1039,17 @@ class PrinterBuilder(private val tipo: String?) {
                     prn.escribirTextoSinSalto("Orden: ")
 
                     prn.escribirTexto(order.optString("sequential", "N/A"))
+
+                    val turn = order.optString("turn", "")
+                    if (turn.isNotEmpty()) {
+                        prn.escribirTextoSinSalto("Turno: ")
+
+                        prn.escribirTexto(order.optString("turn", "N/A"))
+
+                    }
+                    prn.agregarSalto()
                 }
+
                 prn.LineasGuion()
                 prn.escribirTextoSinSalto("Cant Descripción")
                 prn.agregarCaracteres((caracteres - 26).coerceAtLeast(0), "")
@@ -1765,6 +1791,9 @@ class PrinterBuilder(private val tipo: String?) {
 
     fun enviarImprimir(trabajo: String) {
         println("Enviando trabajo de impresión...")
+        val startTs = System.currentTimeMillis()
+        var success = false
+        var error: String? = null
         try {
             when (tipo) {
                 PrinterType.WIFI.type -> {
@@ -1772,26 +1801,50 @@ class PrinterBuilder(private val tipo: String?) {
                         val style = Style()
                         val escposCoffee = EscposCoffee(style, outputStream)
                         escposCoffee.printMessage(trabajo)
-
+                        success = true
                     }
                 }
                 PrinterType.BLUETOOTH.type -> {
                     val style = Style()
                     val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
                     escposCoffee.printMessage(trabajo)
-                    //streamBluetooth!!.write(trabajo.toByteArray(charset("ISO-8859-1")))
                     Thread.sleep(10)
-
+                    success = true
                 }
                 else -> {
-                    val style = Style()
-                    val escposCoffee = EscposCoffee(style, this.usbOutputStream!!)
-                    escposCoffee.printMessage(trabajo)
-
+                    if (usbOutputStream != null) {
+                        val style = Style()
+                        val escposCoffee = EscposCoffee(style, usbOutputStream!!)
+                        escposCoffee.printMessage(trabajo)
+                        success = true
+                    } else {
+                        error = "USB output stream is null"
+                    }
                 }
             }
         } catch (e: Exception) {
-            println("")
+            error = e.message
+            e.printStackTrace()
+        } finally {
+            val endTs = System.currentTimeMillis()
+            diagnosticsListener?.invoke(
+                PrinterDiagnosticsEvent(
+                    transportType = tipo ?: "UNKNOWN",
+                    address = address,
+                    port = port,
+                    bytesLength = trabajo.toByteArray(Charsets.ISO_8859_1).size,
+                    startTimestamp = startTs,
+                    endTimestamp = endTs,
+                    success = success,
+                    errorMessage = error
+                )
+            )
+            PrintDiagnosticsBus.appendPersistentLog(
+                context = try { // attempt to derive a context via reflection if available - skipped if fails
+                    null as Context
+                } catch (_: Exception) { null } ?: return,
+                line = "TRANSPORT ${tipo} addr=${address}:${port} bytes=${trabajo.toByteArray(Charsets.ISO_8859_1).size} ms=${endTs-startTs} success=${success} error=${error ?: ""}".trim()
+            )
         }
     }
 
