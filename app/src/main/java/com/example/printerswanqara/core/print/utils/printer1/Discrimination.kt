@@ -53,146 +53,134 @@ class Discrimination(
         PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(document, "setup", dur, printerBuilder != null))
     }
 
+
+    
     suspend operator fun invoke(commands: Array<String>): Boolean {
-        var jsonObject: JSONObject?
         var errorCount = 0
         var errorCommand: Array<String> = arrayOf()
         if (commands.isEmpty()) return false
-        // Parse main command, saleId, and additional commands
-        val mainCommand = commands[0].trim().removePrefix("//").removePrefix("wanqaraprintermobile://").trimStart('/')
-        val transactionID = commands.getOrNull(1)?.trim()
-        println("Main command: $mainCommand, Transaction ID: $transactionID")
-        val additionalCommands = if (commands.size > 2) commands.sliceArray(2 until commands.size).map { it.trimStart('/') } else emptyList()
-        val allCommands = mutableListOf<String>()
-        allCommands.add(mainCommand)
-        allCommands.addAll(additionalCommands)
-
-        // Fetch data from API ONCE
-        val isCotizacion = mainCommand == "IMPRESION_COTIZACION"
-        val isPreTicket = mainCommand == "IMPRESION_PRE_TICKET"
-        val isComanda = mainCommand.startsWith("IMPRESION_COMANDA")
-        val isCierre = mainCommand == "IMPRESION_CIERRE_CAJA"
-        println("Discrimination: isCotizacion = $isCotizacion")
-        val fetchStart = System.currentTimeMillis()
-        val transactionObject = if (!transactionID.isNullOrEmpty()) {
-            withContext(Dispatchers.IO) {
-                try {
-                    if (isCotizacion) {
-                        val quotesService = ApiClient.createQuotesService(context)
-                        val quote = quotesService.getQuoteById(transactionID).data
-                        println("Discrimination: quote = $quote")
-                        JSONObject(com.google.gson.Gson().toJson(quote))
-                    }   else if (isPreTicket){
-
-                        val orderService = ApiClient.createOrderService(context)
-                        val order = orderService.getOrderById(transactionID).data
-                        println("Discrimination: order = $order")
-                        JSONObject(com.google.gson.Gson().toJson(order))
-                    } else if (isComanda){
-
-                        val orderPrintService = ApiClient.createOrderPrintService(context)
-                        val orderPrint = orderPrintService.getOrderPrintById(transactionID).data
-                        println("Discrimination: orderPrint/Comanda = $orderPrint")
-                        JSONObject(com.google.gson.Gson().toJson(orderPrint))
-                    } else if (isCierre){
-
-                        val cashRegisterService = ApiClient.createCashRegisterService(context)
-                        val cashRegister = cashRegisterService.getCashRegisterById(transactionID).data
-                        println("Discrimination: cashRegister = $cashRegister")
-                        JSONObject(com.google.gson.Gson().toJson(cashRegister))
-                    }
-
-                    else {
-                        println( "Discrimination: Fetching sale for ID $transactionID" )
-                        val salesService = ApiClient.createSalesService(context)
-                        val sale = salesService.getSalesById(transactionID).data
-                        println("Discrimination: sale = $sale")
-                        JSONObject(com.google.gson.Gson().toJson(sale))
-                    }
-                } catch (e: Exception) {
-                    android.util.Log.e("Discrimination", "Error fetching data for all jobs with id $transactionID.", e)
-                    null
-                }
+    
+        // Parse commands as pairs: (command, id)
+        val commandPairs = mutableListOf<Pair<String, String>>()
+        var i = 0
+        while (i < commands.size) {
+            val rawCommand = commands[i].trim().removePrefix("//").removePrefix("wanqaraprintermobile://").trimStart('/')
+            val id = commands.getOrNull(i + 1)?.trim()
+            if (id.isNullOrEmpty()) {
+                android.util.Log.e("Discrimination", "Invalid command format: missing ID for command '$rawCommand'")
+                errorCount++
+                errorCommand = errorCommand.plus(rawCommand)
+                i += 2 // Skip to next pair
+                continue
             }
-        } else null
-        val fetchDur = System.currentTimeMillis() - fetchStart
-        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(mainCommand, "fetch-data", fetchDur, transactionObject != null || transactionID.isNullOrEmpty()))
-        println("Discrimination: transactionObject = $transactionObject")
-
-        // Only proceed with print jobs if saleJsonObject is received
-        if (!transactionID.isNullOrEmpty() && transactionObject == null) {
-            android.util.Log.e("Discrimination", "Data not received, aborting print jobs.")
+            commandPairs.add(rawCommand to id)
+            i += 2
+        }
+    
+        if (commandPairs.isEmpty()) {
+            android.util.Log.e("Discrimination", "No valid command pairs found.")
             return false
         }
-
-        for (command in allCommands) {
-            if (command.isEmpty() || transactionID.isNullOrEmpty()) {
-                android.util.Log.e("Discrimination", "Invalid command format: $command (documentType or saleId is empty)")
+    
+        // Process each command pair
+        for ((command, transactionID) in commandPairs) {
+            if (command.isEmpty() || transactionID.isEmpty()) {
+                android.util.Log.e("Discrimination", "Invalid command pair: command='$command', id='$transactionID'")
                 errorCount++
                 errorCommand = errorCommand.plus(command)
                 continue
             }
-            setup(command, commands)
+    
+            setup(command, commands) // Setup printer per command
             android.util.Log.d("Discrimination", "After setup: printerBuilder is ${if (printerBuilder != null) "NOT NULL" else "NULL"}")
-            // Use saleJsonObject for all jobs
-            jsonObject = transactionObject
-            android.util.Log.d("Discrimination", "After API call: jsonObject is ${if (jsonObject != null) "NOT NULL" else "NULL"}")
-            if (printerBuilder != null && jsonObject != null) {
+    
+            // Fetch data per command, based on command type
+            val fetchStart = System.currentTimeMillis()
+            val jsonObject = withContext(Dispatchers.IO) {
+                try {
+                    when {
+                        command == "IMPRESION_COTIZACION" -> {
+                            val quotesService = ApiClient.createQuotesService(context)
+                            val quote = quotesService.getQuoteById(transactionID).data
+                            println("Discrimination: quote = $quote")
+                            JSONObject(com.google.gson.Gson().toJson(quote))
+                        }
+                        command == "IMPRESION_PRE_TICKET" -> {
+                            val orderService = ApiClient.createOrderService(context)
+                            val order = orderService.getOrderById(transactionID).data
+                            println("Discrimination: order = $order")
+                            JSONObject(com.google.gson.Gson().toJson(order))
+                        }
+                        command.startsWith("IMPRESION_COMANDA") -> { // Always use orderPrintService for comanda commands
+                            val orderPrintService = ApiClient.createOrderPrintService(context)
+                            val orderPrint = orderPrintService.getOrderPrintById(transactionID).data
+                            println("Discrimination: orderPrint/Comanda = $orderPrint")
+                            JSONObject(com.google.gson.Gson().toJson(orderPrint))
+                        }
+                        command == "IMPRESION_CIERRE_CAJA" -> {
+                            val cashRegisterService = ApiClient.createCashRegisterService(context)
+                            val cashRegister = cashRegisterService.getCashRegisterById(transactionID).data
+                            println("Discrimination: cashRegister = $cashRegister")
+                            JSONObject(com.google.gson.Gson().toJson(cashRegister))
+                        }
+                        else -> { // Default to sales for other commands (e.g., IMPRESION_FACTURA_ELECTRONICA, IMPRESION_RECIBO)
+                            println("Discrimination: Fetching sale for ID $transactionID")
+                            val salesService = ApiClient.createSalesService(context)
+                            val sale = salesService.getSalesById(transactionID).data
+                            println("Discrimination: sale = $sale")
+                            JSONObject(com.google.gson.Gson().toJson(sale))
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("Discrimination", "Error fetching data for command '$command' with id $transactionID.", e)
+                    null
+                }
+            }
+            val fetchDur = System.currentTimeMillis() - fetchStart
+            PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(command, "fetch-data", fetchDur, jsonObject != null))
+            println("Discrimination: jsonObject for $command = $jsonObject")
+    
+            // Proceed only if data was fetched
+            if (jsonObject == null) {
+                android.util.Log.e("Discrimination", "Data not received for command '$command', skipping print.")
+                errorCount++
+                errorCommand = errorCommand.plus(command)
+                continue
+            }
+    
+            if (printerBuilder != null) {
                 try {
                     val phaseStart = System.currentTimeMillis()
                     when (command) {
                         "IMPRESION_FACTURA_ELECTRONICA" -> {
-                            android.util.Log.d(
-                                "Discrimination",
-                                "Sending imprimirFacturaElectronica command with documentType: $command"
+                            android.util.Log.d("Discrimination", "Sending imprimirFacturaElectronica command with documentType: $command")
+                            printerBuilder!!.imprimirFacturaElectronica(
+                                jsonObject,
+                                settingJson,
+                                printer!!.copyNumber,
+                                printer!!.charactersNumber,
                             )
-                            if (printerBuilder != null) {
-                                printerBuilder!!.imprimirFacturaElectronica(
-                                    jsonObject,
-                                    settingJson,
-                                    printer!!.copyNumber,
-                                    printer!!.charactersNumber,
-                                )
-                            }
-
                         }
-
                         "IMPRESION_RECIBO" -> {
-                            android.util.Log.d(
-                                "Discrimination",
-                                "Sending imprimirRecibo command with documentType: $command"
+                            android.util.Log.d("Discrimination", "Sending imprimirRecibo command with documentType: $command")
+                            printerBuilder!!.imprimirRecibo(
+                                jsonObject,
+                                settingJson,
+                                printer!!.copyNumber,
+                                printer!!.charactersNumber,
                             )
-                            if (printerBuilder != null) {
-                                printerBuilder!!.imprimirRecibo(
-                                    jsonObject,
-                                    settingJson,
-                                    printer!!.copyNumber,
-                                    printer!!.charactersNumber,
-                                )
-                            }
-
                         }
-
                         "IMPRESION_COTIZACION" -> {
-                            android.util.Log.d(
-                                "Discrimination",
-                                "Sending imprimirRecibo command with documentType: $command"
+                            android.util.Log.d("Discrimination", "Sending imprimirCotizacion command with documentType: $command")
+                            printerBuilder!!.imprimirCotizacion(
+                                jsonObject,
+                                settingJson,
+                                printer!!.copyNumber,
+                                printer!!.charactersNumber,
                             )
-                            if (printerBuilder != null) {
-                                printerBuilder!!.imprimirCotizacion(
-                                    jsonObject,
-                                    settingJson,
-                                    printer!!.copyNumber,
-                                    printer!!.charactersNumber,
-                                )
-                            }
-
                         }
                         "IMPRESION_PRE_TICKET" -> {
-                            android.util.Log.d(
-                                "Discrimination",
-                                "Sending imprimirPreticket command with documentType: $command"
-                            )
+                            android.util.Log.d("Discrimination", "Sending imprimirPreticket command with documentType: $command")
                             printerBuilder!!.imprimirPreticket(
                                 jsonObject,
                                 settingJson,
@@ -200,44 +188,31 @@ class Discrimination(
                                 printer!!.charactersNumber
                             )
                         }
-
                         "IMPRESION_COMANDA:COCINA", "IMPRESION_COMANDA:BARRA", "IMPRESION_COMANDA:OTROS" -> {
-                            android.util.Log.d(
-                                "Discrimination",
-                                "Sending comanda command with documentType: $command"
-                            )
+                            android.util.Log.d("Discrimination", "Sending comanda command with documentType: $command")
                             val comandaType = when (command) {
                                 "IMPRESION_COMANDA:COCINA" -> "A"
                                 "IMPRESION_COMANDA:BARRA" -> "B"
                                 "IMPRESION_COMANDA:OTROS" -> "C"
                                 else -> ""
                             }
-                            if (printerBuilder != null) {
-                                printerBuilder!!.imprimirComandas(
-                                    jsonObject,
-                                    settingJson,
-                                    printer!!.copyNumber,
-                                    printer!!.charactersNumber,
-                                    comandaType
-                                )
-                            }
-
+                            printerBuilder!!.imprimirComandas(
+                                jsonObject,
+                                settingJson,
+                                printer!!.copyNumber,
+                                printer!!.charactersNumber,
+                                comandaType
+                            )
                         }
                         "IMPRESION_CIERRE_CAJA" -> {
-                            android.util.Log.d(
-                                "Discrimination",
-                                "Sending imprimirCierreCaja command with documentType: $command"
+                            android.util.Log.d("Discrimination", "Sending imprimirCierreCaja command with documentType: $command")
+                            printerBuilder!!.imprimirCierreCaja(
+                                jsonObject,
+                                settingJson,
+                                printer!!.copyNumber,
+                                printer!!.charactersNumber
                             )
-                            if (printerBuilder != null) {
-                                printerBuilder!!.imprimirCierreCaja(
-                                    jsonObject,
-                                    settingJson,
-                                    printer!!.copyNumber,
-                                    printer!!.charactersNumber
-                                )
-                            }
                         }
-                        // Add more document types as needed
                         else -> {
                             android.util.Log.e("Discrimination", "Unknown documentType: $command")
                             errorCount++
@@ -252,11 +227,7 @@ class Discrimination(
                         kotlinx.coroutines.delay(200)
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e(
-                        "Discrimination",
-                        "Error printing job for $command: ${e.message}",
-                        e
-                    )
+                    android.util.Log.e("Discrimination", "Error printing job for $command: ${e.message}", e)
                     errorCount++
                     errorCommand = errorCommand.plus(command)
                 }
@@ -265,25 +236,24 @@ class Discrimination(
                 if (!errorCommand.contains(command)) errorCommand = errorCommand.plus(command)
             }
         }
+    
         // Close connection only after all jobs
         printerBuilder?.closeAll()
-        if (errorCommand.size > 0) {
-            var possibleSet =
-                context.getSharedPreferences("asd", 0).getStringSet("Commands", setOf())
+        // Handle error storage (unchanged)
+        if (errorCommand.isNotEmpty()) {
+            var possibleSet = context.getSharedPreferences("asd", 0).getStringSet("Commands", setOf())
             possibleSet
             context.getSharedPreferences("asd", 0).edit().putStringSet("Commands", setOf()).apply()
-            possibleSet =
-                context.getSharedPreferences("asd", 0).getStringSet("Commands", setOf())
+            possibleSet = context.getSharedPreferences("asd", 0).getStringSet("Commands", setOf())
             possibleSet
-            context.getSharedPreferences("asd", 0).edit()
-                .putStringSet("Commands", errorCommand.toSet()).apply()
-            possibleSet =
-                context.getSharedPreferences("asd", 0).getStringSet("Commands", setOf())
+            context.getSharedPreferences("asd", 0).edit().putStringSet("Commands", errorCommand.toSet()).apply()
+            possibleSet = context.getSharedPreferences("asd", 0).getStringSet("Commands", setOf())
             possibleSet
         } else {
             context.getSharedPreferences("asd", 0).edit().putStringSet("Commands", setOf()).apply()
         }
-        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(mainCommand, "overall", 0L, errorCount==0, "errors=$errorCount"))
+        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(commandPairs.firstOrNull()?.first ?: "unknown", "overall", 0L, errorCount == 0, "errors=$errorCount"))
         return errorCount == 0
     }
+    
 }

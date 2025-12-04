@@ -5,7 +5,6 @@ data class OrderPrintApiResponse(
 )
 
 
-// New classes for the provided JSON
 
 data class OrderPrintData(
     val id: String,
@@ -13,6 +12,8 @@ data class OrderPrintData(
     val responsible_name: String,
     val observation: String?,
     val is_initial: Boolean,
+    val type : String,
+    val is_urgent: Boolean,
     val order_id: String,
     val user_id: String,
     val created_at: String,
@@ -22,6 +23,7 @@ data class OrderPrintData(
     val order_print_details: List<OrderPrintDetailItem>,
     val order: OrderPayloadDetails,
     val printers: List<PrinterInfoAssociated>
+
 )
 
 data class OrderPrintDetailItem(

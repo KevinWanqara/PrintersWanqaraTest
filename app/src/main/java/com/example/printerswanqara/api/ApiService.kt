@@ -94,10 +94,26 @@ data class Printers(
     val order : PrinterDetails,
     val preticket : PrinterDetails,
     val receipt : PrinterDetails,
+    val cash_register : CashRegisterDetails,
+
 
 
 )
 
+data class CashRegisterDetails(
+    val payment_methods: Boolean? = null,
+    val movements: Boolean? = null,
+    val logbook: Boolean? = null,
+    val sales_by_product: Boolean? = null,
+    val sales_resume: Boolean? = null,
+    val font: String? = null,
+    val logo: Boolean? = null,
+    val user: Boolean? = null,
+    val line_breaks: Int? = null,
+    val line_spacing: Boolean? = null,
+    val copies: Int? = null,
+    val tip: Boolean? = null,
+)
 data class PrinterDetails(
     val copies: Int ? = null,
     val font : String ? = null,
@@ -136,9 +152,9 @@ interface ApiService {
 }
 
 object ApiClient {
-    private const val BASE_URL = BuildConfig.BASE_URL
+    //private const val BASE_URL = BuildConfig.BASE_URL
 
-    //private const val BASE_URL = https://system.wanqara.org/api/v1/
+    private const val BASE_URL = "https://system.wanqara.org/api/v1/"
     //private const val BASE_URL = "https://system.wanqara.app/api/v1/"
     // Provide context when building the client
     fun createApiService(context: Context, withTenant: Boolean = true): ApiService {

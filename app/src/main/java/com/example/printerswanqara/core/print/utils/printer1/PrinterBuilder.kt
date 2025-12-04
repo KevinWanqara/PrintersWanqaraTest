@@ -1476,7 +1476,7 @@ class PrinterBuilder(private val tipo: String?) {
             val commandSequential = orderData.optString("sequential") ?: "N/A"
 
             prn.agregarTexto("Orden " + (orderData.optJSONObject("order")?.optString("sequential") ?: "N/A"))
-            prn.agregarTexto("$printCode-$commandSequential")
+            prn.agregarTexto("$printCode - $commandSequential")
             prn.alineadoIzquierda()
 
             prn.agregarSalto()
@@ -1492,8 +1492,14 @@ class PrinterBuilder(private val tipo: String?) {
             } catch (e: Exception) {
                 "N/A"
             }
+            val order = orderData.optJSONObject("order")
+            if(order?.optJSONObject("table") != null){
+                val table = order.optJSONObject("table")
+                prn.agregarTexto("Comensales: " + (table?.optString("pax") ?: "N/A"))
+                prn.agregarTexto("Area: " + (table?.optJSONObject("area")?.optString("name", "N/A") ?: "N/A"))
+                prn.agregarTexto("Mesa: " + (table?.optString("name", "N/A") ?: "N/A") + " - " + order.optString("alias", "N/A"))
+            }
             prn.agregarTexto("Fecha: $formattedDate")
-            prn.agregarTexto("Comensales: " + (orderData.optJSONObject("order")?.optJSONObject("table")?.optString("pax") ?: "N/A"))
 
             prn.LineasIgual()
 
@@ -1552,7 +1558,8 @@ class PrinterBuilder(private val tipo: String?) {
             prn.LineasIgual()
 
             prn.negritaOn()
-            prn.agregarTexto(orderData.optString("type") ?: "N/A")
+
+            prn.agregarTexto(orderData.optString("type") ?: "N/A" )
 
 
             prn.negritaOff()
@@ -1588,194 +1595,305 @@ class PrinterBuilder(private val tipo: String?) {
 
 
 
-    fun imprimirCierreCaja(js: JSONObject?,sj : JSONObject?, copias: Int, caracteres: Int) {
+    fun imprimirCierreCaja(js: JSONObject?, sj: JSONObject?, copias: Int, caracteres: Int) {
         try {
             if (js == null) return
 
-            // reutilizables
-            //var detalles: JSONArray
-            //var jo: JSONObject
-            val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
-            println("Printer Config [TODO: Change to valid] : $printerConfig")
-            // imprimir
+            val summary = js.getJSONObject("summary")
+            val totals = summary.getJSONObject("totals")
+            val paymentMethods = summary.optJSONArray("payment_methods")
+            val salesByProduct = summary.optJSONArray("sales_by_product")
+            val salesByHour = summary.optJSONObject("sales_by_hour")
+            val movements = summary.optJSONArray("movements")
+            val cashRegisterSettings = sj?.getJSONObject("printers")?.getJSONObject("cash_register")
+
+            println("Printer Config: $cashRegisterSettings")
+
             val prn = PrinterHelpers(caracteres, copias)
             prn.iniciar()
             prn.setFontA()
 
             prn.agregarSalto()
             prn.alineadoCentro()
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Caja #" + js.optString("sequential"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Abierta " + js.optString("opened_at"))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Cerrada " + js.optString("closed_at","N/A" ))
-            prn.agregarSalto()
-            val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-
-
-            prn.escribirTextoSinSalto("Impreso " + currentDateTime)
-            prn.agregarSalto()
-
-            prn.LineasGuion()
-            prn.alineadoIzquierda()
-
             prn.negritaOn()
-            prn.escribirTexto("Valores de Caja")
+            prn.escribirTexto("Cierre de Caja")
             prn.negritaOff()
+            prn.agregarSalto()
 
+
+            prn.escribirTexto("Caja #" + js.optString("sequential"))
+            prn.escribirTexto("Usuario: " + js.getJSONObject("user").optString("name"))
+
+            val sub = js.getJSONObject("subsidiary")
+            prn.escribirTexto(
+                "Sucursal: " + sub.optString("commercial_name") +
+                        " " + sub.optString("code") +
+                        " · PV: " + js.optJSONObject("checkout")?.optString("name","-")
+            )
+
+            prn.escribirTexto("Apertura: " + js.optString("opened_at"))
+            prn.escribirTexto("Cierre: " + js.optString("closed_at", "-"))
+
+            val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+            prn.escribirTexto("Impreso: $currentDateTime")
+            prn.agregarSalto()
+            prn.alineadoIzquierda()
+            // ===========================
+            // RESUMEN EFECTIVO — PARTE 1
+            // ===========================
+            prn.LineasGuion()
+
+            prn.escribirTextoSinSalto("Efectivo esperado")
+            prn.agregarCaracteresDerecha(caracteres - 17, "$" + df.format(totals.getDouble("expected_cash")))
+            prn.agregarSalto()
+
+            prn.escribirTextoSinSalto("Efectivo contado")
+            prn.agregarCaracteresDerecha(caracteres - 16, "$" + df.format(totals.getDouble("received_cash")))
+            prn.agregarSalto()
+
+            val difference = totals.getDouble("difference")
+            val diffAbs = kotlin.math.abs(difference)
+            val diffSuf = if (difference < 0) "S" else "F"
+
+            prn.escribirTextoSinSalto("Diferencia")
+            prn.agregarCaracteresDerecha(caracteres - 10, df.format(diffAbs) + " " + diffSuf)
+            prn.agregarSalto()
+
+            // ===========================
+            // RESUMEN EFECTIVO — PARTE 2
+            // ===========================
+            prn.LineasGuion()
+            prn.negritaOn()
+            prn.alineadoCentro()
+            prn.escribirTexto("-- Resumen de Efectivo --")
+            prn.alineadoIzquierda()
+            prn.negritaOff()
 
 
             prn.escribirTextoSinSalto("Apertura")
-
-            prn.agregarCaracteresDerecha(caracteres-8,"$"+df.format(js.optDouble("opening")))
+            prn.agregarCaracteresDerecha(caracteres - 8, "$" + df.format(totals.getDouble("opening")))
             prn.agregarSalto()
 
-            val cashMovements = js.optJSONArray("cash_movements")
-
-            var ins = 0.00
-            var outs = 0.00
-
-            if (cashMovements != null) {
-                for (i in 0 until cashMovements.length()) {
-                    val movement = cashMovements.optJSONObject(i)
-                    if (movement != null) {
-                        val type = movement.optString("type")
-                        val total = movement.optString("total").toDoubleOrNull() ?: 0.00
-                        if (type == "in") {
-                            ins += total
-                        } else if (type == "out") {
-                            outs += total
-                        }
-                    }
-                }
-            }
-
-            println("Ingresos: $ins")
-            println("Outs: $outs")
+            prn.escribirTextoSinSalto("Ventas en efectivo")
+            prn.agregarCaracteresDerecha(caracteres - 18, "$" + df.format(totals.getDouble("sales_cash")))
+            prn.agregarSalto()
 
             prn.escribirTextoSinSalto("+ Ingresos")
-            prn.agregarCaracteresDerecha(caracteres-10,"$"+ df.format(ins))
+            prn.agregarCaracteresDerecha(caracteres - 10, "+" + df.format(totals.getDouble("revenue")))
             prn.agregarSalto()
+
             prn.escribirTextoSinSalto("- Egresos")
-            prn.agregarCaracteresDerecha(caracteres-9,"$"+ df.format(outs))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Efectivo Ventas")
-            prn.agregarCaracteresDerecha(caracteres-15,"$"+df.format(js.optDouble("sales_cash")))
-
-            prn.negritaOn()
-            prn.LineasGuionSinTexto()
-            prn.negritaOff()
-
-            prn.escribirTextoSinSalto("Total Caja")
-            prn.agregarCaracteresDerecha(caracteres-10,"$"+df.format(js.optDouble("total_cash")))
-            prn.LineasGuion()
-            prn.negritaOn()
-            prn.escribirTexto("Cuadre de Caja")
-            prn.negritaOff()
-            prn.LineasGuion()
-
-            prn.escribirTextoSinSalto("Total en Efectivo")
-            prn.agregarCaracteresDerecha(caracteres-17,"$"+df.format(js.optDouble("total_cash")))
-            prn.agregarSalto()
-            prn.escribirTextoSinSalto("Efectivo Entregado")
-            prn.agregarCaracteresDerecha(caracteres-18,"$"+df.format(js.optDouble("received_cash")))
-            prn.agregarSalto()
-            prn.negritaOn()
-            prn.LineasGuionSinTexto()
-            prn.negritaOff()
-            val totalCash = js.optDouble("total_cash", 0.0)
-            val receivedCash = js.optDouble("received_cash", 0.0)
-            val difference = receivedCash - totalCash
-
-            val status = if (difference < 0) "F" else if (difference > 0) "S" else null
-
-            prn.escribirTextoSinSalto("Diferencia")
-            if(status != null) {
-                prn.agregarCaracteresDerecha(caracteres-10,"$"+df.format(js.optDouble("difference"))+" "+status)
-            } else {
-                prn.agregarCaracteresDerecha(caracteres-10,"$"+df.format(js.optDouble("difference")))
-            }
-            prn.agregarSalto()
-            prn.LineasGuion()
-            prn.negritaOn()
-            prn.escribirTexto("Resumen de Pagos")
-            prn.negritaOff()
-            prn.LineasGuion()
-
-
-            val summary = js.optJSONObject("summary")
-            val paymentMethods = summary?.optJSONArray("payment_methods")
-
-            if (paymentMethods != null && paymentMethods.length() > 0) {
-                for (i in 0 until paymentMethods.length()) {
-                    val paymentMethod = paymentMethods.getJSONObject(i)
-                    val paymentMethodName = paymentMethod.optString("name", "N/A")
-                    val remainingSpace = caracteres - paymentMethodName.length
-                    prn.escribirTextoSinSalto(paymentMethod.optString("name", "N/A"))
-                    prn.agregarCaracteresDerecha(remainingSpace,"$"+df.format(paymentMethod.optDouble("amount", 0.0)))
-                    prn.agregarSalto()
-                }
-            } else {
-                prn.escribirTextoSinSalto("No hay métodos de pago")
-                prn.agregarSalto()
-            }
-            prn.negritaOn()
-            prn.LineasGuionSinTexto()
-            prn.negritaOff()
-            prn.escribirTextoSinSalto("Total Ventas")
-            prn.agregarCaracteresDerecha(caracteres-12,"$"+df.format(js.optDouble("sales_total")))
-
+            prn.agregarCaracteresDerecha(caracteres - 9, "-" + df.format(totals.getDouble("expenses")))
             prn.agregarSalto()
 
+            prn.negritaOn()
+            prn.escribirTextoSinSalto("Total esperado")
+            prn.agregarCaracteresDerecha(caracteres - 14, "$" + df.format(totals.getDouble("expected_cash")))
+            prn.negritaOff()
+            prn.agregarSalto()
+
+            // ===========================
+            // VENTAS
+            // ===========================
             prn.LineasGuion()
             prn.negritaOn()
-            prn.escribirTexto("Resumen de Productos")
-            prn.negritaOff()
-            prn.LineasGuion()
-            val salesByProduct = summary?.optJSONArray("sales_by_product")
-
-            if (salesByProduct != null && salesByProduct.length() > 0) {
-                for (i in 0 until salesByProduct.length()) {
-                    val saleProduct = salesByProduct.getJSONObject(i)
-                    val productName = saleProduct.optString("product_name", "N/A")
-                    val quantity = saleProduct.optInt("total_quantity").toString()
-                    val price = "$" + df.format(saleProduct.optDouble("total_sold_with_taxes", 0.0))
-
-                    val productNameWidth = (caracteres * 0.6).toInt()
-                    val quantityWidth = (caracteres * 0.2).toInt()
-                    val priceWidth = (caracteres * 0.2).toInt()
-
-
-                    val truncatedProductName = if (productName.length > productNameWidth) {
-                        productName.take(productNameWidth - 3) + "..."
-                    } else {
-                        productName.padEnd(productNameWidth)
-                    }
-
-
-                    val paddedQuantity = quantity.padStart(quantityWidth)
-                    val paddedPrice = price.padStart(priceWidth)
-
-
-                    prn.escribirTextoSinSalto(truncatedProductName)
-                    prn.escribirTextoSinSalto(paddedQuantity)
-                    prn.escribirTextoSinSalto(paddedPrice)
-                    prn.agregarSalto()
-                }
-            } else {
-                prn.escribirTextoSinSalto("No hay productos vendidos")
-                prn.agregarSalto()
-            }
-            prn.LineasGuion()
-            prn.agregarSalto()
             prn.alineadoCentro()
+            prn.escribirTexto("-- Ventas --")
+            prn.alineadoIzquierda()
+            prn.negritaOff()
+
+            val totalsHour = salesByHour.optJSONObject("totals")
+
+            prn.escribirTextoSinSalto("# Válidas")
+            prn.agregarCaracteresDerecha(caracteres - 9, "" + df.format(totalsHour.optJSONObject("valid")?.optInt("count", 0)))
+
+            prn.escribirTextoSinSalto("# Anuladas")
+            prn.agregarCaracteresDerecha(caracteres - 10, "" + df.format(totalsHour.optJSONObject("canceled")?.optInt("count", 0)))
+
+            prn.escribirTextoSinSalto("Total válidas")
+            prn.agregarCaracteresDerecha(caracteres - 13, "" + df.format(totals.getDouble("sales_total_valid")))
+
+
+            prn.agregarSalto()
+
+            // ===========================
+            // INGRESOS POR FORMA DE PAGO
+            // ===========================
+            if (cashRegisterSettings?.optBoolean("payment_methods", false) == true) {
+                prn.LineasGuion()
+                prn.negritaOn()
+                prn.alineadoCentro()
+                prn.escribirTexto("-- Ingresos por forma de pago --")
+                prn.alineadoIzquierda()
+                prn.negritaOff()
+
+                if (paymentMethods != null) {
+                    for (i in 0 until paymentMethods.length()) {
+                        val pm = paymentMethods.getJSONObject(i)
+                        val name = pm.optString("name")
+                        val amt = pm.optJSONObject("valid").optDouble("amount")
+
+                        prn.escribirTextoSinSalto(name)
+                        prn.agregarCaracteresDerecha(caracteres - name.length, "$" + df.format(amt))
+                        prn.agregarSalto()
+                    }
+                }
+            }
+
+            // ===========================
+            // PROPINAS
+            // ===========================
+            if (cashRegisterSettings?.optBoolean("tip", false) == true) {
+                prn.LineasGuion()
+                prn.negritaOn()
+                prn.alineadoCentro()
+                prn.escribirTexto("-- Propinas --")
+                prn.alineadoIzquierda()
+                prn.negritaOff()
+
+                val tip = totals.optDouble("additional_tip_total", 0.0)
+
+                prn.escribirTextoSinSalto("Propinas adicionales")
+                prn.agregarCaracteresDerecha(caracteres - 20, "" + df.format(tip))
+            }
+
+
+            // ===========================
+            // TOP PRODUCTOS
+            // ===========================
+            if (cashRegisterSettings?.optBoolean("sales_by_product", false) == true) {
+                prn.LineasGuion()
+                prn.negritaOn()
+                prn.alineadoCentro()
+                prn.escribirTexto("-- Top productos --")
+                prn.alineadoIzquierda()
+                prn.negritaOff()
+
+                if (salesByProduct != null && salesByProduct.length() > 0) {
+                    for (i in 0 until salesByProduct.length()) {
+                        val p = salesByProduct.getJSONObject(i)
+
+                        prn.escribirTextoSinSalto(p.optString("product_name"))
+                        val productLength = p.optString("product_name").length
+                        prn.agregarCaracteresDerecha(caracteres - productLength, "" + p.optInt("total_quantity"))
+
+                        prn.negritaOn()
+                        prn.lineHeight()
+                        prn.LineasGuion()
+                        prn.negritaOff()
+                        prn.lineHeight2()
+                        prn.escribirTextoSinSalto("     Importe")
+
+                        prn.agregarCaracteresDerecha(caracteres - 12, "" + df.format(p.optDouble("total_sold_with_taxes")))
+                        prn.agregarSalto()
+                    }
+                }else{
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("No hay productos vendidos")
+                    prn.agregarSalto()
+                }
+            }
+
+            // ===========================
+            // HORA PICO
+            // ===========================
+            if (cashRegisterSettings?.optBoolean("sales_resume", false) == true) {
+                prn.LineasGuion()
+                prn.negritaOn()
+                prn.alineadoCentro()
+                prn.escribirTexto("-- Hora pico --")
+                prn.alineadoIzquierda()
+                prn.negritaOff()
+
+                val buckets = salesByHour.optJSONArray("buckets")
+                if (buckets != null && buckets.length() > 0) {
+                    for (i in 0 until buckets.length()) {
+                        val b = buckets.getJSONObject(i)
+                        prn.escribirTexto(
+                            b.getString("hour") + ":00 $" +
+                                    df.format(b.optDouble("valid_amount"))
+                        )
+
+                        prn.escribirTextoSinSalto(b.getString("hour") + ":00")
+
+                        prn.agregarCaracteresDerecha(caracteres - 5, "" + df.format(b.optDouble("valid_amount")))
+                    }
+                } else {
+                    prn.agregarSalto()
+                    prn.escribirTexto("No hay datos disponibles")
+                    prn.agregarSalto()
+                }
+            }
+
+            // ===========================
+            // MOVIMIENTOS DE CAJA
+            // ===========================
+            if (cashRegisterSettings?.optBoolean("movements", false) == true) {
+                prn.LineasGuion()
+                prn.negritaOn()
+                prn.alineadoCentro()
+                prn.escribirTexto("-- Movimientos de caja --")
+                prn.alineadoIzquierda()
+                prn.negritaOff()
+
+                if (movements != null && movements.length() > 0) {
+                    for (i in 0 until movements.length()) {
+                        val m = movements.getJSONObject(i)
+                        val concept = m.optString("concept")
+
+                        val amount =  df.format(m.optDouble("total"))
+                        val maxConceptWidth = 30 // Set maximum width for concept text
+                        val truncatedConcept = if (concept.length > maxConceptWidth) {
+                            concept.substring(0, maxConceptWidth)
+                        } else {
+                            concept
+                        }
+                        prn.escribirTextoSinSalto(truncatedConcept)
+                        val conceptLength = truncatedConcept.length
+                        prn.agregarCaracteresDerecha(caracteres - conceptLength,  ""+amount)
+                        prn.agregarSalto()
+                    }
+                }else {
+                    prn.agregarSalto()
+                    prn.escribirTexto("No hay movimientos de caja")
+                    prn.agregarSalto()
+                }
+            }
+
+            // ===========================
+            // OBSERVACIÓN (si existe)
+            // ===========================
+            prn.alineadoCentro()
+            if (js.has("observation")) {
+                prn.LineasGuion()
+
+                prn.escribirTexto("Obs: " + js.optString("observation"))
+
+            }
+
+            // ===========================
+            // CIERRE FINAL
+            // ===========================
+
+
+            prn.LineasGuion()
+            prn.agregarSalto()
+            val cierreTxt = if (difference < 0)
+                "Cierre con sobrante de $" + df.format(diffAbs)
+            else
+                "Cierre con faltante de $" + df.format(diffAbs)
+
+            prn.escribirTexto(cierreTxt)
+            prn.agregarSalto()
+            prn.escribirTexto("------------------------")
+            prn.escribirTexto("Firma")
+            prn.agregarSalto()
             prn.escribirTexto("¡Gracias!")
 
             prn.feedFinal()
-            prn.alineadoIzquierda()
             prn.cortar()
             enviarImprimir(prn.getTrabajo())
+
         } catch (e: JSONException) {
             e.printStackTrace()
         }

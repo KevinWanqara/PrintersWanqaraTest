@@ -61,6 +61,8 @@ data class Sales(
 
 data class OrderPrints(
     val sequential: String,
+    val is_urgent : Boolean,
+    val type : String,
     val order_print_details: List<OrderPrintDetails>
 )
 
