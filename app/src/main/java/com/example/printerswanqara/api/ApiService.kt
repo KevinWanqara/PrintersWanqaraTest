@@ -151,10 +151,21 @@ interface ApiService {
     suspend fun verifyRuc(@Query("ruc") ruc: String): VerifyRucResponse
 }
 
-object ApiClient {
-    //private const val BASE_URL = BuildConfig.BASE_URL
+data class PrintRequest(
+    val address: String,
+    val data: com.google.gson.JsonObject,
+    val type: String
+)
 
-    private const val BASE_URL = "https://system.wanqara.org/api/v1/"
+interface DynamicPrinterService {
+    @POST("api/print/discrimination")
+    suspend fun print(@Body request: PrintRequest): okhttp3.ResponseBody
+}
+
+object ApiClient {
+    private const val BASE_URL = BuildConfig.BASE_URL
+
+    //private const val BASE_URL = "https://system.wanqara.org/api/v1/"
     //private const val BASE_URL = "https://system.wanqara.app/api/v1/"
     // Provide context when building the client
     fun createApiService(context: Context, withTenant: Boolean = true): ApiService {
@@ -385,6 +396,36 @@ object ApiClient {
         return retrofit.create(OrderPrintService::class.java)
     }
 
-
+    fun createDynamicPrinterService(context: Context, baseUrl: String): DynamicPrinterService {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val original: Request = chain.request()
+                // We might not need headers for local IP, but keeping consistent with user request to "use this"
+                // If it fails due to headers, we can remove them. 
+                // However, usually local services ignore unknown headers.
+                // Let's include them to be safe/consistent.
+                val ruc = AppStorage.getRuc(context)
+                val token = AppStorage.getToken(context)
+                val requestBuilder = original.newBuilder()
+                    .addHeader("Accept", "application/json")
+                if (ruc != null) {
+                    requestBuilder.addHeader("X-tenant", ruc.trim())
+                }
+                if (token != null) {
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                }
+                chain.proceed(requestBuilder.build())
+            }
+            .build()
+        
+        val retrofit = Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+        return retrofit.create(DynamicPrinterService::class.java)
+    }
 
 }
+
+

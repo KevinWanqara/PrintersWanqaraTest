@@ -11,7 +11,7 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
+
 import com.dantsu.escposprinter.connection.usb.UsbOutputStream
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections
 import com.example.printerswanqara.core.print.EscposCoffee
@@ -73,30 +73,28 @@ class PrinterBuilder(private val tipo: String?) {
     @SuppressLint("MissingPermission")
     fun InicializarImpresoraBluetooth(address: String): Boolean {
         return try {
-            val printers = BluetoothPrintersConnections()
-            val bluetoothPrinters = printers.list
-            if (!bluetoothPrinters.isNullOrEmpty()) {
-                for (printer in bluetoothPrinters) {
-                    if (printer.device.address == address){
-                        try {
-                            printer.connect()
-                            val btDevice: BluetoothDevice = printer.device
-                            val bt =
-                                btDevice.createRfcommSocketToServiceRecord(UUID.fromString(btDevice.uuids[0].toString()))
-                            printer.disconnect()
-                            bt.connect()
-                            this.streamBluetooth = bt.outputStream
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
-                true
-            } else {
-                false
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+                return false
             }
+
+            val device = bluetoothAdapter.getRemoteDevice(address)
+            val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") // Standard SPP UUID
+            
+            socketBluetooth = device.createRfcommSocketToServiceRecord(uuid)
+            socketBluetooth?.connect()
+            streamBluetooth = socketBluetooth?.outputStream
+            
+            true
         } catch (e: Exception) {
             e.printStackTrace()
+            try {
+                socketBluetooth?.close()
+            } catch (closeException: Exception) {
+                closeException.printStackTrace()
+            }
+            socketBluetooth = null
+            streamBluetooth = null
             false
         }
     }
@@ -1559,7 +1557,7 @@ class PrinterBuilder(private val tipo: String?) {
 
             prn.negritaOn()
 
-            prn.agregarTexto(orderData.optString("type") ?: "N/A" )
+            prn.agregarTexto(orderData.optString("order_type") ?: "N/A" )
 
 
             prn.negritaOff()
@@ -2030,3 +2028,4 @@ class PrinterBuilder(private val tipo: String?) {
         }
     }
 }
+

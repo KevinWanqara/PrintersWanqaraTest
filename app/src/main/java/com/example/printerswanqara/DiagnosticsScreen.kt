@@ -102,9 +102,7 @@ fun DiagnosticsScreen(navController: NavHostController) {
                     color = Color.Gray
                 )
             }
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Primary)
-            }
+
         }
 
         Spacer(Modifier.height(16.dp))

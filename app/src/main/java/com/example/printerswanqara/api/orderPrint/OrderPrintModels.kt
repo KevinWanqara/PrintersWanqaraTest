@@ -12,7 +12,7 @@ data class OrderPrintData(
     val responsible_name: String,
     val observation: String?,
     val is_initial: Boolean,
-    val type : String,
+    val order_type : String,
     val is_urgent: Boolean,
     val order_id: String,
     val user_id: String,

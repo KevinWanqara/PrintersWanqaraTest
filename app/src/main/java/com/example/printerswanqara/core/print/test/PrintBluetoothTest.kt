@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.widget.Toast
 
-import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import com.example.printerswanqara.core.print.EscposCoffee
 import com.github.anastaciocintra.escpos.Style
 import kotlinx.coroutines.CoroutineScope
@@ -37,24 +36,21 @@ class PrintBluetoothTest(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     private fun getOutputStream(mac: String) {
-        val printers = BluetoothPrintersConnections()
-        val bluetoothPrinters = printers.list
-        if (!bluetoothPrinters.isNullOrEmpty()) {
-            for (printer in bluetoothPrinters) {
-                if (printer.device.address == mac) {
-                    try {
-                        printer.connect()
-                        val btDevice: BluetoothDevice = printer.device
-                        val bt =
-                            btDevice.createRfcommSocketToServiceRecord(UUID.fromString(btDevice.uuids[0].toString()))
-                        printer.disconnect()
-                        bt.connect()
-                        this.streamBluetooth = bt.outputStream
-                    } catch (e: Exception) {
-                        println(e)
-                    }
-                }
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+                return
             }
+
+            val device = bluetoothAdapter.getRemoteDevice(mac)
+            val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") // Standard SPP UUID
+            
+            val socket = device.createRfcommSocketToServiceRecord(uuid)
+            socket.connect()
+            this.streamBluetooth = socket.outputStream
+        } catch (e: Exception) {
+            println(e)
+            this.streamBluetooth = null
         }
     }
 }
