@@ -163,9 +163,9 @@ interface DynamicPrinterService {
 }
 
 object ApiClient {
-    private const val BASE_URL = BuildConfig.BASE_URL
+    //private const val BASE_URL = BuildConfig.BASE_URL
 
-    //private const val BASE_URL = "https://system.wanqara.org/api/v1/"
+    private const val BASE_URL = "https://system.wanqara.org/api/v1/"
     //private const val BASE_URL = "https://system.wanqara.app/api/v1/"
     // Provide context when building the client
     fun createApiService(context: Context, withTenant: Boolean = true): ApiService {

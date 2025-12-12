@@ -78,7 +78,7 @@ class EscposCoffee : PrinterLibraryRepository {
         try {
             this.escPos.write(message)
 //            this.escPos.write("\u001B" + "\u0042" + "\u0005" + "\u0002")
-            this.escPos.close()
+
         } catch (e: Exception) {
             println(e)
         }
@@ -112,7 +112,7 @@ class EscposCoffee : PrinterLibraryRepository {
         try {
             this.escPos.feed(5)
             this.escPos.cut(EscPos.CutMode.FULL)
-            this.escPos.close()
+
         } catch (ex: IOException) {
             println(ex.message)
         }
@@ -155,7 +155,7 @@ class EscposCoffee : PrinterLibraryRepository {
             escpos.feed(2)
             escpos.feed(5)
             escpos.cut(EscPos.CutMode.FULL)
-            escpos.close()
+
         } catch (e: Exception) {
             println(e)
         }
@@ -197,7 +197,7 @@ class EscposCoffee : PrinterLibraryRepository {
             escpos.feed(2)
             escpos.feed(5)
             escpos.cut(EscPos.CutMode.FULL)
-            escpos.close()
+
         } catch (e: Exception) {
             println(e)
         }
@@ -238,7 +238,7 @@ class EscposCoffee : PrinterLibraryRepository {
             escpos.feed(2)
             escpos.feed(5)
             escpos.cut(EscPos.CutMode.FULL)
-            escpos.close()
+
         } catch (e: Exception) {
             println(e)
         }
@@ -256,7 +256,7 @@ class EscposCoffee : PrinterLibraryRepository {
         this.escPos.close()
     }
 
-    private suspend fun printImageFromUrl(escpos: EscPos, imageUrl: String) {
+    internal suspend fun printImageFromUrl(escpos: EscPos, imageUrl: String) {
         try {
             val inputStream = URL(imageUrl).openStream()
             var image: Bitmap = BitmapFactory.decodeStream(inputStream)

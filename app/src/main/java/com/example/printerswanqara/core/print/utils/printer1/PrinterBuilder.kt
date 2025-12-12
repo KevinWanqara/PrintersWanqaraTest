@@ -311,6 +311,8 @@ class PrinterBuilder(private val tipo: String?) {
                     )
 
 
+                }else{
+                    println("NO SJ VALUE")
                 }
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Factura Electrónica Nº:")
@@ -335,7 +337,7 @@ class PrinterBuilder(private val tipo: String?) {
 
                 prn.alineadoIzquierda()
                 prn.escribirTextoSinSalto("Fecha: ")
-                prn.escribirTextoSinSalto(js.optString("date"))
+                prn.escribirTextoSinSalto(js.optString("date","N/A"))
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Cliente: ")
                 prn.escribirTextoSinSalto(js.getJSONObject("customer").optString("name"))
@@ -562,6 +564,8 @@ class PrinterBuilder(private val tipo: String?) {
 
                 prn.cortar()
 
+                println("Comandos")
+                println(prn.getTrabajo())
                 enviarImprimir(prn.getTrabajo())
                 closeAll()
 
@@ -664,7 +668,7 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.agregarSalto()
                 prn.alineadoIzquierda()
                 prn.escribirTextoSinSalto("Fecha: ")
-                prn.escribirTextoSinSalto(js.optString("date"))
+                prn.escribirTextoSinSalto(js.optString("date","N/A"))
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Cliente: ")
                 prn.escribirTextoSinSalto(js.getJSONObject("customer").optString("name"))
@@ -1921,11 +1925,17 @@ class PrinterBuilder(private val tipo: String?) {
                     }
                 }
                 PrinterType.BLUETOOTH.type -> {
-                    val style = Style()
-                    val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
-                    escposCoffee.printMessage(trabajo)
-                    Thread.sleep(10)
-                    success = true
+                    if (this.streamBluetooth != null) {
+                        val style = Style()
+                        val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
+                        escposCoffee.printMessage(trabajo)
+
+                        Thread.sleep(2000)
+                        this.streamBluetooth?.flush()
+                        success = true
+                    } else {
+                        error = "Bluetooth stream is null"
+                    }
                 }
                 else -> {
                     if (usbOutputStream != null) {
@@ -1976,11 +1986,15 @@ class PrinterBuilder(private val tipo: String?) {
                         }
                     }
                     PrinterType.BLUETOOTH.type -> {
-                        val style = Style()
-                        val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
-                        escposCoffee.printMedia(mediaBuilder)
-                        //streamBluetooth!!.write(trabajo.toByteArray(charset("ISO-8859-1")))
-                        //Thread.sleep(10)
+                        if (this.streamBluetooth != null) {
+                            val style = Style()
+                            val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
+                            escposCoffee.printMedia(mediaBuilder)
+                            kotlinx.coroutines.delay(2000)
+                            this.streamBluetooth?.flush()
+                        } else {
+                            println("Bluetooth stream is null")
+                        }
                     }
                     else -> {
                         val style = Style()

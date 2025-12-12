@@ -22,6 +22,9 @@ import kotlinx.coroutines.withContext
 // Added imports for diagnostics
 import com.example.printerswanqara.core.print.utils.printer1.PrinterBuilder
 import com.example.printerswanqara.core.print.utils.printer1.PrintDiagnosticsBus
+// Added imports for schema handling
+import com.example.printerswanqara.core.print.utils.schema.SchemaParser
+import com.example.printerswanqara.core.print.utils.schema.NetworkPrintHandler
 
 class BackgroundActivity : ComponentActivity() {
 
@@ -111,6 +114,39 @@ class BackgroundActivity : ComponentActivity() {
             val uri = intent.data
             Log.d("BackgroundActivity", "Intent URI: $uri")
             PrintDiagnosticsBus.appendPersistentLog(this, "JOB_START uri=${uri}")
+            // Check if this is a send-to-print schema
+            if (SchemaParser.isSendToPrintSchema(uri)) {
+                Log.d("BackgroundActivity", "Detected send-to-print schema")
+                PrintDiagnosticsBus.appendPersistentLog(this, "SCHEMA_TYPE send-to-print")
+                
+                // Parse the schema
+                val configs = SchemaParser.parse(uri!!)
+                Log.d("BackgroundActivity", "Parsed ${configs.size} printer configurations")
+                PrintDiagnosticsBus.appendPersistentLog(this, "SCHEMA_CONFIGS count=${configs.size}")
+                
+                if (configs.isEmpty()) {
+                    Log.e("BackgroundActivity", "No valid printer configurations found")
+                    PrintDiagnosticsBus.appendPersistentLog(this, "JOB_FAIL reason=no_configs")
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(this@BackgroundActivity, "No valid printer configurations", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    return false
+                }
+                
+                // Process with NetworkPrintHandler
+                val handler = NetworkPrintHandler(this)
+                result = handler.handleConfigs(configs)
+                
+                if (!result) {
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(this@BackgroundActivity, "Error sending to one or more printers", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                
+                return result
+            }
+
+            // Existing logic for regular schemas
 
             // Expecting schema: wanqaraprintermobile://IMPRESION_FACTURA_ELECTRONICA,${'$'}{sale.id}"
             val saleId = uri?.schemeSpecificPart?.split(",")?.getOrNull(1)

@@ -16,6 +16,8 @@ import java.util.UUID
 class PrintBluetoothTest(private val context: Context) {
 
     private var streamBluetooth: OutputStream? = null
+    private var socketBluetooth: android.bluetooth.BluetoothSocket? = null
+
     operator fun invoke(mac: String , testFont : String): Boolean {
         getOutputStream(mac)
         if (streamBluetooth == null) {
@@ -30,6 +32,15 @@ class PrintBluetoothTest(private val context: Context) {
                 Toast.makeText(context, "Error con la impresora", Toast.LENGTH_SHORT).show()
             }
             return true
+        } finally {
+            try {
+                streamBluetooth?.close()
+                socketBluetooth?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            streamBluetooth = null
+            socketBluetooth = null
         }
         return true
     }
@@ -45,12 +56,13 @@ class PrintBluetoothTest(private val context: Context) {
             val device = bluetoothAdapter.getRemoteDevice(mac)
             val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") // Standard SPP UUID
             
-            val socket = device.createRfcommSocketToServiceRecord(uuid)
-            socket.connect()
-            this.streamBluetooth = socket.outputStream
+            socketBluetooth = device.createRfcommSocketToServiceRecord(uuid)
+            socketBluetooth?.connect()
+            this.streamBluetooth = socketBluetooth?.outputStream
         } catch (e: Exception) {
             println(e)
             this.streamBluetooth = null
+            this.socketBluetooth = null
         }
     }
 }
