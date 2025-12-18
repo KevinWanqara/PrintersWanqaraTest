@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -252,6 +253,7 @@ fun PrinterCard(
         "USB" -> Icons.Default.Usb
         "WIFI" -> Icons.Default.Wifi
         "BLUETOOTH" -> Icons.Default.Bluetooth
+        "SERVER" -> Icons.Default.Dns
         else -> Icons.Default.Usb
     }
 

@@ -162,6 +162,35 @@ interface DynamicPrinterService {
     suspend fun print(@Body request: PrintRequest): okhttp3.ResponseBody
 }
 
+data class ServerPrintRequest(
+    val data: com.google.gson.JsonObject ? = null,
+    val printType: String? = null,
+    val openDrawer: Boolean? = null
+)
+
+interface ServerPrinterService {
+    @POST("receiptPrinter/invoice-ticket")
+    suspend fun printInvoiceTicket(@Body request: ServerPrintRequest): okhttp3.ResponseBody
+
+    @POST("receiptPrinter/ticket-a")
+    suspend fun printTicketA(@Body request: ServerPrintRequest): okhttp3.ResponseBody
+
+    @POST("receiptPrinter/ticket-b")
+    suspend fun printTicketB(@Body request: ServerPrintRequest): okhttp3.ResponseBody
+
+    @POST("receiptPrinter/ticket-c")
+    suspend fun printTicketC(@Body request: ServerPrintRequest): okhttp3.ResponseBody
+
+    @POST("receiptPrinter/preticket")
+    suspend fun printPreticket(@Body request: ServerPrintRequest): okhttp3.ResponseBody
+
+    @POST("receiptPrinter/quote")
+    suspend fun printQuote(@Body request: ServerPrintRequest): okhttp3.ResponseBody
+
+    @POST("receiptPrinter/cashregister")
+    suspend fun printCashRegister(@Body request: ServerPrintRequest): okhttp3.ResponseBody
+}
+
 object ApiClient {
     //private const val BASE_URL = BuildConfig.BASE_URL
 
@@ -424,6 +453,27 @@ object ApiClient {
             .client(client)
             .build()
         return retrofit.create(DynamicPrinterService::class.java)
+    }
+
+    fun createServerPrinterService(context: Context, baseUrl: String): ServerPrinterService {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val original: Request = chain.request()
+                val requestBuilder = original.newBuilder()
+                    .header("Content-Type", "application/json")
+                chain.proceed(requestBuilder.build())
+            }
+            .build()
+        
+        val retrofit = Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+        return retrofit.create(ServerPrinterService::class.java)
     }
 
 }

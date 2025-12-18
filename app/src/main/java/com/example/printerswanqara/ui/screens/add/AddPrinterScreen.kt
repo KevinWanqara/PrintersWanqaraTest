@@ -18,6 +18,7 @@ import com.example.printerswanqara.core.printType.PrinterType
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Dns
 import com.example.printerswanqara.ui.theme.Primary
 import com.example.printerswanqara.ui.theme.Secondary
 import com.example.printerswanqara.core.document.documentType
@@ -71,7 +72,8 @@ fun AddPrinterScreen(navController: NavController) {
     val modes = listOf(
         PrinterType.USB to Icons.Default.Usb,
         PrinterType.BLUETOOTH to Icons.Default.Bluetooth,
-        PrinterType.WIFI to Icons.Default.Wifi
+        PrinterType.WIFI to Icons.Default.Wifi,
+        PrinterType.SERVER to Icons.Default.Dns
     )
     // Step state
     var step by remember { mutableIntStateOf(1) }
@@ -124,91 +126,78 @@ fun AddPrinterScreen(navController: NavController) {
 
             // Step 1: Type and value inputs
             if (step == 1) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    //val configuration = LocalConfiguration.current
-                    //val screenWidth = configuration.screenWidthDp.dp
-                    //val buttonCount = modes.size
-                    val buttonMinWidth = 80.dp
-                    //val buttonMaxWidth = (screenWidth / buttonCount) - 5.dp
-                    modes.forEach { (mode, icon) ->
-                        val isSelected = mode == selectedMode
-                        val buttonModifier = Modifier
-                            .weight(1f)
-                            .defaultMinSize(minWidth = buttonMinWidth)
-                            .padding(
-                                horizontal = 0.dp,
-                            )
+                    modes.chunked(2).forEach { rowModes ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            rowModes.forEach { (mode, icon) ->
+                                val isSelected = mode == selectedMode
+                                val buttonModifier = Modifier
+                                    .weight(1f)
+                                    .defaultMinSize(minWidth = 80.dp)
+                                    .padding(horizontal = 0.dp)
 
-
-                        if (isSelected) {
-                            Button(
-                                onClick = {
-                                    selectedMode = mode
-                                    if (mode == PrinterType.BLUETOOTH) {
-                                        showBluetoothPicker = true
+                                if (isSelected) {
+                                    Button(
+                                        onClick = {
+                                            selectedMode = mode
+                                            if (mode == PrinterType.BLUETOOTH) {
+                                                showBluetoothPicker = true
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                                        modifier = buttonModifier,
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                mode.name,
+                                                fontSize = 10.sp,
+                                                maxLines = 1,
+                                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onPrimary),
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Icon(icon, contentDescription = mode.type, modifier = Modifier.size(15.dp))
+                                        }
                                     }
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                                modifier = buttonModifier,
-
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(), // This makes the Row take the full width of the Button's content area
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center // This aligns content to the start
-                                ) {
-
-                                    Text(
-                                        mode.name,
-                                        fontSize = 10.sp,
-                                        maxLines = 1,
-                                        style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onPrimary),
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-
-                                    Icon(icon, contentDescription = mode.type,modifier = Modifier.size(15.dp))
-
-                                }
-
-
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = {
-                                    selectedMode = mode
-                                    if (mode == PrinterType.BLUETOOTH) {
-                                        showBluetoothPicker = true
+                                } else {
+                                    OutlinedButton(
+                                        onClick = {
+                                            selectedMode = mode
+                                            if (mode == PrinterType.BLUETOOTH) {
+                                                showBluetoothPicker = true
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Primary),
+                                        modifier = buttonModifier
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                mode.name,
+                                                fontSize = 10.sp,
+                                                maxLines = 1,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Icon(icon, contentDescription = mode.type, modifier = Modifier.size(15.dp))
+                                        }
                                     }
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Primary),
-                                modifier = buttonModifier
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(), // This makes the Row take the full width of the Button's content area
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center // This aligns content to the start
-                                ) {
-
-                                    Text(
-                                        mode.name,
-                                        fontSize =10.sp,
-                                        maxLines = 1,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Icon(icon, contentDescription = mode.type,modifier = Modifier.size(15.dp))
-
-
-
                                 }
-
-
                             }
                         }
                     }
@@ -321,6 +310,22 @@ fun AddPrinterScreen(navController: NavController) {
                             }
                         }
                     }
+
+                    PrinterType.SERVER -> {
+                        OutlinedTextField(
+                            value = printerName,
+                            onValueChange = { printerName = it },
+                            label = { Text("Nombre de Impresora") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = wifiIp,
+                            onValueChange = { wifiIp = it },
+                            label = { Text("Dirección IP / Host") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f, fill = true))
                 Row(
@@ -334,6 +339,7 @@ fun AddPrinterScreen(navController: NavController) {
                             PrinterType.USB -> printerName.isNotBlank()
                             PrinterType.BLUETOOTH -> printerName.isNotBlank() && bluetoothDevice.isNotBlank()
                             PrinterType.WIFI -> printerName.isNotBlank() && wifiIp.isNotBlank() && wifiPort > 0
+                            PrinterType.SERVER -> printerName.isNotBlank() && wifiIp.isNotBlank()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Primary),
                     ) {
@@ -407,6 +413,9 @@ fun AddPrinterScreen(navController: NavController) {
                                 android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest on step load with ip=$wifiIp port=$wifiPort")
                                 PrintWifiTest(wifiIp.trim(), wifiPort, "B").invoke()
                             }
+                            PrinterType.SERVER -> {
+                                android.util.Log.d("AddPrinterScreen", "Server type selected, skipping legacy test")
+                            }
                         }
                         testTriggered = true
                     }
@@ -451,6 +460,9 @@ fun AddPrinterScreen(navController: NavController) {
                                 PrinterType.WIFI -> {
                                     android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest from button with ip=$wifiIp port=$wifiPort")
                                     PrintWifiTest(wifiIp, wifiPort, testFont).invoke()
+                                }
+                                PrinterType.SERVER -> {
+                                    android.util.Log.d("AddPrinterScreen", "Server type selected, skipping legacy test")
                                 }
                             }
                         },
@@ -605,6 +617,7 @@ fun AddPrinterScreen(navController: NavController) {
                         PrinterType.USB -> Icons.Default.Usb
                         PrinterType.WIFI -> Icons.Default.Wifi
                         PrinterType.BLUETOOTH -> Icons.Default.Bluetooth
+                        PrinterType.SERVER -> Icons.Default.Wifi
                     }
                     Icon(icon, contentDescription = selectedMode.type, tint = Primary, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.width(12.dp))
@@ -641,6 +654,24 @@ fun AddPrinterScreen(navController: NavController) {
                     )
                     Text(
                         "Puerto: $wifiPort",
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (selectedMode == PrinterType.SERVER) {
+                    Text(
+                        "IP/Host: $wifiIp",
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        "Puerto: 51512 (Fijo)",
                         modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
@@ -719,6 +750,9 @@ fun AddPrinterScreen(navController: NavController) {
                                     }
                                     PrinterType.WIFI -> {
                                         saveWifiPrinter(context, printerName, wifiIp, wifiPort,docKey,copyNumber,characters)
+                                    }
+                                    PrinterType.SERVER -> {
+                                        saveServerPrinter(context, printerName, wifiIp, docKey, copyNumber, characters)
                                     }
                                 }
                                 if (!success) allSuccess = false
@@ -865,6 +899,40 @@ suspend fun saveWifiPrinter(
     )
     println(
         "Saving WiFi printer: $name, IP: $ip, Port: $port, Characters: $charactersNumber, Copies: $copyNumber, Document Type: $documentType"
+    )
+    return try {
+        withContext(Dispatchers.IO) {
+            val db = DatabaseProvider.getDatabase(context)
+            val repository = PrinterRepository(db.printersDAO())
+            val addPrinter = AddPrinters(repository)
+            addPrinter(entity)
+        }
+        true
+    } catch (_: Exception) {
+        false
+    }
+}
+
+suspend fun saveServerPrinter(
+    context: Context,
+    name: String,
+    address: String,
+    documentType: String,
+    copyNumber: Int,
+    charactersNumber: Int
+): Boolean {
+    val entity = PrintersEntity(
+        name = name,
+        fontSize = "A",
+        documentType = documentType,
+        copyNumber = copyNumber,
+        charactersNumber = charactersNumber,
+        type = PrinterType.SERVER.type,
+        address = address,
+        port = 51512 // Fixed port for server printers
+    )
+    println(
+        "Saving SERVER printer: $name, Address: $address, Characters: $charactersNumber, Copies: $copyNumber, Document Type: $documentType"
     )
     return try {
         withContext(Dispatchers.IO) {

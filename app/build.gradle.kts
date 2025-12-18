@@ -119,5 +119,8 @@ dependencies {
     implementation(libs.accompanist.navigation.animation)
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 }
+
+
 

@@ -7,6 +7,7 @@ import com.example.printerswanqara.api.ApiClient
 import com.example.printerswanqara.data.AppStorage
 
 import org.json.JSONObject
+import org.json.JSONArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -40,6 +41,11 @@ class Discrimination(
                     printerBuilder = PrinterBuilder(PrinterType.BLUETOOTH.type)
                     printerBuilder!!.InicializarImpresoraBluetooth(printer!!.address!!)
                 }
+                PrinterType.SERVER.type -> {
+                    // Server type doesn't use PrinterBuilder for ESC/POS commands
+                    // It will be handled directly in invoke() via HTTP requests
+                    printerBuilder = null 
+                }
                 else -> {
                     printerBuilder = PrinterBuilder(PrinterType.USB.type)
                     printerBuilder!!.InintUsbPrinter(context)
@@ -50,7 +56,8 @@ class Discrimination(
             printerBuilder = null
         }
         val dur = System.currentTimeMillis() - start
-        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(document, "setup", dur, printerBuilder != null))
+        val setupSuccess = printerBuilder != null || (printer != null && printer!!.type == PrinterType.SERVER.type)
+        PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(document, "setup", dur, setupSuccess))
     }
 
 
@@ -231,6 +238,129 @@ class Discrimination(
                     errorCount++
                     errorCommand = errorCommand.plus(command)
                 }
+            } else if (printer != null && printer!!.type == PrinterType.SERVER.type) {
+                try {
+                    val phaseStart = System.currentTimeMillis()
+                    val address = printer!!.address ?: ""
+                    val baseUrl = "http://$address:51512/"
+                    
+                    val settingsStr = AppStorage.getSettings(context) ?: ""
+                    val settingsJson = if (settingsStr.isNotEmpty()) JSONObject(settingsStr) else JSONObject()
+                    
+                    // The outer jsonObject is the fetched data (sale, order, etc.)
+                    val dataJson = jsonObject 
+                    dataJson.put("settings", settingsJson)
+                    
+                    // Calculate summary for sales
+                    if (command == "IMPRESION_FACTURA_ELECTRONICA" || command == "IMPRESION_RECIBO") {
+                        val summaryJson = JSONObject()
+                        summaryJson.put("discount", String.format(java.util.Locale.US, "%.2f", dataJson.optDouble("discount", 0.0)))
+                        summaryJson.put("subtotal", String.format(java.util.Locale.US, "%.2f", dataJson.optDouble("subtotal", 0.0)))
+                        summaryJson.put("total", String.format(java.util.Locale.US, "%.2f", dataJson.optDouble("total", 0.0)))
+                        
+                        val originalSummary = dataJson.optJSONObject("summary")
+                        if (originalSummary != null) {
+                            val subtotalRates = originalSummary.optJSONArray("subtotal_rate")
+                            if (subtotalRates != null) {
+                                val newSubtotalRates = JSONArray()
+                                for (i in 0 until subtotalRates.length()) {
+                                    val rateObj = subtotalRates.getJSONObject(i)
+                                    val newRateObj = JSONObject()
+                                    newRateObj.put("rate", rateObj.optString("rate"))
+                                    newRateObj.put("subtotal", String.format(java.util.Locale.US, "%.2f", rateObj.optDouble("subtotal", 0.0)))
+                                    newSubtotalRates.put(newRateObj)
+                                }
+                                summaryJson.put("subtotal_rate", newSubtotalRates)
+                            }
+                            
+                            val ivaRates = originalSummary.optJSONArray("iva_rate")
+                            if (ivaRates != null) {
+                                val newIvaRates = JSONArray()
+                                for (i in 0 until ivaRates.length()) {
+                                    val rateObj = ivaRates.getJSONObject(i)
+                                    val newRateObj = JSONObject()
+                                    newRateObj.put("rate", rateObj.optString("rate"))
+                                    newRateObj.put("iva", String.format(java.util.Locale.US, "%.2f", rateObj.optDouble("iva", 0.0)))
+                                    newIvaRates.put(newRateObj)
+                                }
+                                summaryJson.put("iva_rate", newIvaRates)
+                            }
+                        }
+                        dataJson.put("summary", summaryJson)
+                    }
+
+                    val serverService = ApiClient.createServerPrinterService(context, baseUrl)
+                    val gsonData = com.google.gson.JsonParser().parse(dataJson.toString()).asJsonObject
+                    
+                    val request = when (command) {
+                        "IMPRESION_FACTURA_ELECTRONICA" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData, printType = "01", openDrawer = true)
+                        "IMPRESION_RECIBO" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData, printType = "03", openDrawer = true)
+                        "IMPRESION_PRE_TICKET" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData)
+                        "IMPRESION_COTIZACION" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData)
+                        "IMPRESION_CIERRE_CAJA" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData)
+                        "IMPRESION_COMANDA:COCINA" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData)
+                        "IMPRESION_COMANDA:BARRA" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData)
+                        "IMPRESION_COMANDA:OTROS" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData)
+                        "GAVETA_DINERO" -> com.example.printerswanqara.api.ServerPrintRequest(data = gsonData, openDrawer = true)
+                        else -> null
+                    }
+
+                    if (request != null) {
+                        val endpoint = when (command) {
+                            "IMPRESION_FACTURA_ELECTRONICA", "IMPRESION_RECIBO", "GAVETA_DINERO" -> "receiptPrinter/invoice-ticket"
+                            "IMPRESION_PRE_TICKET" -> "receiptPrinter/preticket"
+                            "IMPRESION_COTIZACION" -> "receiptPrinter/quote"
+                            "IMPRESION_CIERRE_CAJA" -> "receiptPrinter/cashregister"
+                            "IMPRESION_COMANDA:COCINA" -> "receiptPrinter/ticket-a"
+                            "IMPRESION_COMANDA:BARRA" -> "receiptPrinter/ticket-b"
+                            "IMPRESION_COMANDA:OTROS" -> "receiptPrinter/ticket-c"
+                            else -> ""
+                        }
+                        
+                        val fullUrl = "$baseUrl$endpoint"
+                        val jsonBody = com.google.gson.Gson().toJson(request)
+                        
+                        // Log CURL command
+//                        val curlCommand = "curl -X POST $fullUrl -H \"Content-Type: application/json\" -d '${jsonBody.replace("'", "'\\''")}'"
+//                        android.util.Log.d("Discrimination", "EQUIVALENT CURL: $curlCommand")
+//
+//                        android.util.Log.d("Discrimination", "Sending SERVER request (Retrofit) to $fullUrl")
+//
+                        // Run raw test in parallel/sequence for debugging
+//                        withContext(Dispatchers.IO) {
+//                            sendRawPost(fullUrl, jsonBody)
+//                        }
+
+                        val response = when (command) {
+                            "IMPRESION_FACTURA_ELECTRONICA", "IMPRESION_RECIBO", "GAVETA_DINERO" -> serverService.printInvoiceTicket(request)
+                            "IMPRESION_PRE_TICKET" -> serverService.printPreticket(request)
+                            "IMPRESION_COTIZACION" -> serverService.printQuote(request)
+                            "IMPRESION_CIERRE_CAJA" -> serverService.printCashRegister(request)
+                            "IMPRESION_COMANDA:COCINA" -> serverService.printTicketA(request)
+                            "IMPRESION_COMANDA:BARRA" -> serverService.printTicketB(request)
+                            "IMPRESION_COMANDA:OTROS" -> serverService.printTicketC(request)
+                            else -> null
+                        }
+
+                        if (response != null) {
+                            val responseBody = response.string()
+                            android.util.Log.d("Discrimination", "SERVER response (Retrofit) received for $command. Body: $responseBody")
+                            val phaseDur = System.currentTimeMillis() - phaseStart
+                            PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(command, "server-print", phaseDur, true))
+                        } else {
+                            errorCount++
+                            errorCommand = errorCommand.plus(command)
+                        }
+                    } else {
+                        android.util.Log.e("Discrimination", "Unknown documentType for SERVER: $command")
+                        errorCount++
+                        errorCommand = errorCommand.plus(command)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("Discrimination", "Error sending SERVER job for $command: ${e.message}", e)
+                    errorCount++
+                    errorCommand = errorCommand.plus(command)
+                }
             } else {
                 errorCount++
                 if (!errorCommand.contains(command)) errorCommand = errorCommand.plus(command)
@@ -254,6 +384,41 @@ class Discrimination(
         }
         PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(commandPairs.firstOrNull()?.first ?: "unknown", "overall", 0L, errorCount == 0, "errors=$errorCount"))
         return errorCount == 0
+    }
+
+    private fun sendRawPost(urlString: String, body: String) {
+        try {
+            android.util.Log.d("Discrimination", "Sending RAW POST to $urlString")
+            val url = java.net.URL(urlString)
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+
+            java.io.OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
+                writer.write(body)
+                writer.flush()
+            }
+
+            val code = conn.responseCode
+            val responseBuilder = StringBuilder()
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            if (stream != null) {
+                java.io.BufferedReader(java.io.InputStreamReader(stream)).use { reader ->
+                    var line: String? = reader.readLine()
+                    while (line != null) {
+                        responseBuilder.append(line).append("\n")
+                        line = reader.readLine()
+                    }
+                }
+            }
+            android.util.Log.d("Discrimination", "RAW POST Response Code: $code")
+            android.util.Log.d("Discrimination", "RAW POST Response Body: ${responseBuilder.toString()}")
+        } catch (e: Exception) {
+            android.util.Log.e("Discrimination", "RAW POST Error: ${e.message}", e)
+        }
     }
     
 }

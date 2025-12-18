@@ -3,14 +3,13 @@ package com.example.printerswanqara.ui.screens.edit
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-
-
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -49,6 +48,7 @@ import com.example.printerswanqara.ui.screens.add.BluetoothDevicePickerScreen
 import com.example.printerswanqara.ui.screens.add.saveBluetoothPrinter
 import com.example.printerswanqara.ui.screens.add.saveUsbPrinter
 import com.example.printerswanqara.ui.screens.add.saveWifiPrinter
+import com.example.printerswanqara.ui.screens.add.saveServerPrinter
 import com.example.printerswanqara.ui.theme.Primary
 import kotlinx.coroutines.launch
 
@@ -75,7 +75,8 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
     val typeOptions = listOf(
         PrinterType.USB to Icons.Default.Usb,
         PrinterType.BLUETOOTH to Icons.Default.Bluetooth,
-        PrinterType.WIFI to Icons.Default.Wifi
+        PrinterType.WIFI to Icons.Default.Wifi,
+        PrinterType.SERVER to Icons.Default.Dns
     )
 
     val buttonMinWidth = 80.dp
@@ -124,67 +125,72 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
 
 
                 // Type selection
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    typeOptions.forEach { (type, icon) ->
-                        val buttonModifier = Modifier
-                            .weight(1f)
-                            .defaultMinSize(minWidth = buttonMinWidth)
-                            .padding(
-                                horizontal = 0.dp,
-                            )
-                        val isSelected = selectedType == type.type
-                        if (isSelected) {
-                            Button(
-                                onClick = {
-                                    selectedType = type.type
-                                    if (type == PrinterType.BLUETOOTH) showBluetoothPicker = true
-                            },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                                modifier = buttonModifier
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        type.name,
-                                        fontSize = 10.sp,
-                                        maxLines = 1,
-                                        style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onPrimary),
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Icon(icon, contentDescription = type.type, modifier = Modifier.size(15.dp))
-                                }
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = {
-                                    selectedType = type.type
-                                    if (type == PrinterType.BLUETOOTH) showBluetoothPicker = true
-                            },
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Primary),
-                                modifier = buttonModifier
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        type.name,
-                                        fontSize = 10.sp,
-                                        maxLines = 1,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Icon(icon, contentDescription = type.type, modifier = Modifier.size(15.dp))
+                    typeOptions.chunked(2).forEach { rowOptions ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            rowOptions.forEach { (type, icon) ->
+                                val buttonModifier = Modifier
+                                    .weight(1f)
+                                    .defaultMinSize(minWidth = buttonMinWidth)
+                                    .padding(horizontal = 0.dp)
+                                val isSelected = selectedType == type.type
+                                if (isSelected) {
+                                    Button(
+                                        onClick = {
+                                            selectedType = type.type
+                                            if (type == PrinterType.BLUETOOTH) showBluetoothPicker = true
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                                        modifier = buttonModifier
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                type.name,
+                                                fontSize = 10.sp,
+                                                maxLines = 1,
+                                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onPrimary),
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Icon(icon, contentDescription = type.type, modifier = Modifier.size(15.dp))
+                                        }
+                                    }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = {
+                                            selectedType = type.type
+                                            if (type == PrinterType.BLUETOOTH) showBluetoothPicker = true
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Primary),
+                                        modifier = buttonModifier
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                type.name,
+                                                fontSize = 10.sp,
+                                                maxLines = 1,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Icon(icon, contentDescription = type.type, modifier = Modifier.size(15.dp))
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -276,6 +282,21 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                         }
                         Spacer(Modifier.height(8.dp))
                     }
+                    "SERVER" -> {
+                        OutlinedTextField(
+                            value = address,
+                            onValueChange = { address = it },
+                            label = { Text("Dirección IP / Host") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Puerto: 51512 (Fijo)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
                     // USB has no extra fields
                 }
                 // Editable copy number and characters
@@ -315,6 +336,9 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                                 android.util.Log.d("AddPrinterScreen", "Calling PrintWifiTest from button with ip=$address port=$port")
                                 PrintWifiTest(address, port, testFont).invoke()
                             }
+                            PrinterType.SERVER.type -> {
+                                android.util.Log.d("AddPrinterScreen", "Server type selected, skipping legacy test")
+                            }
                         }
                     },colors = ButtonDefaults.buttonColors(containerColor = Primary)) {
                         Text("Probar Impresora")
@@ -343,6 +367,9 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                                     }
                                     PrinterType.WIFI.type -> {
                                         saveWifiPrinter(context, printerName, address, port,documentType,copyNumber,characters)
+                                    }
+                                    PrinterType.SERVER.type -> {
+                                        saveServerPrinter(context, printerName, address, documentType, copyNumber, characters)
                                     }
                                     else -> false // Handle unsupported printer types
                                 }
