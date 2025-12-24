@@ -39,3 +39,9 @@ val Grey200 = Color(0xFFEAEFF4)
 val TableHeader = Color(0xFFf1f1f1)
 val BlackSidebar = Color(0xFF27272a)
 val SelectedItem = Color(0xFFE8E9FE)
+
+// Dark Mode Colors
+val DarkBackground = Color(0xFF121212)
+val DarkSurface = Color(0xFF1E1E1E)
+val DarkOnSurface = Color(0xFFE1E1E1)
+val DarkOnBackground = Color(0xFFE1E1E1)

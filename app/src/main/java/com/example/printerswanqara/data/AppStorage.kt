@@ -13,6 +13,7 @@ object AppStorage {
     private const val AUTH_TOKEN = "auth_token"
     private const val SETTINGS = "settings"
     private const val USER_DATA = "user_data"
+    private const val ONBOARDING_COMPLETED = "onboarding_completed"
 
     fun saveRuc(context: Context, ruc: String) {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -72,6 +73,17 @@ object AppStorage {
             remove(AUTH_TOKEN)
             remove(SETTINGS)
             remove(USER_DATA)
+            remove(ONBOARDING_COMPLETED)
         }
+    }
+
+    fun isOnboardingCompleted(context: Context): Boolean {
+        val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(ONBOARDING_COMPLETED, false)
+    }
+
+    fun setOnboardingCompleted(context: Context, completed: Boolean) {
+        val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit { putBoolean(ONBOARDING_COMPLETED, completed) }
     }
 }

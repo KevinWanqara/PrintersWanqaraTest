@@ -4,11 +4,14 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.printerswanqara.data.database.DatabaseProvider
 import com.example.printerswanqara.data.database.repositories.PrinterRepository
@@ -20,23 +23,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FilterNone
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Person
-
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Usb
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
@@ -44,13 +35,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import kotlinx.coroutines.launch
 import com.example.printerswanqara.core.document.documentType
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.navigation.NavController
 import com.example.printerswanqara.api.ApiClient
 import com.example.printerswanqara.data.AppStorage
-import androidx.compose.ui.text.font.FontWeight
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ListPrintersScreen(navController: NavController) {
     val context = LocalContext.current
@@ -60,12 +49,12 @@ fun ListPrintersScreen(navController: NavController) {
     val searchName by remember { mutableStateOf("") }
     val groupOptions = listOf("Todos", "Nombre", "Tipo")
     val groupIcons = mapOf(
-        "Todos" to Icons.Default.FilterNone, // None
-        "Nombre" to Icons.Default.TextFields,      // Name
-        "Tipo" to Icons.Default.Category       // Type
+        "Todos" to Icons.Default.FilterNone,
+        "Nombre" to Icons.Default.TextFields,
+        "Tipo" to Icons.Default.Category
     )
     val baseInfoService = ApiClient.createBaseInfoService(context)
-    var isLoading by remember { mutableStateOf(false) } // Loading state
+    var isLoading by remember { mutableStateOf(false) }
 
     suspend fun refreshPrinters() {
         val db = DatabaseProvider.getDatabase(context)
@@ -79,9 +68,8 @@ fun ListPrintersScreen(navController: NavController) {
         withContext(Dispatchers.IO) {
             refreshPrinters()
             try {
-                val response = baseInfoService.getBaseInfo().data // Replace with the actual method
-                println("Saving Base Info from list: $response")
-                AppStorage.saveSettings(context, response) // Save the data locally
+                val response = baseInfoService.getBaseInfo().data
+                AppStorage.saveSettings(context, response)
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -90,54 +78,69 @@ fun ListPrintersScreen(navController: NavController) {
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    Column(Modifier.fillMaxSize()) {
         if (isLoading) {
-            androidx.compose.material3.LinearProgressIndicator(
+            LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth().height(4.dp),
                 color = Primary
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
-        // Agrupar por label on top row
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(
-                "Agrupar por:",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-        }
-        // Buttons in a separate, compact row
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            groupOptions.forEach { option ->
-                val selected = groupBy == option
-                Button(
-                    onClick = { groupBy = option },
-                    colors = if (selected) ButtonDefaults.buttonColors(containerColor = Primary) else ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-
-                    border =  if (selected) null else BorderStroke(2.dp, Primary),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    modifier = Modifier.height(32.dp)
+        
+        // Fixed Header Section
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Agrupar por:",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                TextButton(
+                    onClick = {
+                        AppStorage.setOnboardingCompleted(context, false)
+                        (context as? android.app.Activity)?.recreate()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Primary)
                 ) {
-                    Icon(
-                        imageVector = groupIcons[option] ?: Icons.Default.Print,
-                        contentDescription = option,
-
-                        modifier = Modifier.size(16.dp),
-                        tint =   if (selected) Color.White else Primary
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Reiniciar Onboarding", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                groupOptions.forEach { option ->
+                    val selected = groupBy == option
+                    FilterChip(
+                        selected = selected,
+                        onClick = { groupBy = option },
+                        label = { Text(option) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = groupIcons[option] ?: Icons.Default.Print,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Primary,
+                            selectedLabelColor = Color.White,
+                            selectedLeadingIconColor = Color.White
+                        )
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(option, style = MaterialTheme.typography.labelMedium,  color = if (selected) Color.White else Primary )
                 }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
-        // Filter and group printers
         val filteredPrinters = printers.filter {
             searchName.isBlank() || it.name.contains(searchName, ignoreCase = true)
         }
@@ -148,20 +151,24 @@ fun ListPrintersScreen(navController: NavController) {
         }
 
         if (filteredPrinters.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "No tiene impresoras agregadas")
+                    Text(text = "No tiene impresoras agregadas", style = MaterialTheme.typography.bodyLarge)
                     Spacer(modifier = Modifier.height(16.dp))
                     Icon(
                         imageVector = Icons.Default.Print,
                         contentDescription = "No printers icon",
                         modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 grouped.forEach { (groupKey, groupList) ->
                     item {
                         var expanded by remember { mutableStateOf(true) }
@@ -183,7 +190,6 @@ fun ListPrintersScreen(navController: NavController) {
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.weight(1f)
                                 )
-
                             }
                             if (showGroupDeleteDialog) {
                                 AlertDialog(
@@ -263,61 +269,77 @@ fun PrinterCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    icon,
-                    contentDescription = printer.type,
-                    tint = Primary,
-                    modifier = Modifier.size(36.dp)
-                )
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Primary.copy(alpha = 0.1f),
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            icon,
+                            contentDescription = printer.type,
+                            tint = Primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                
                 Spacer(modifier = Modifier.width(16.dp))
+                
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = docTypeObj.findDocumentByKey(printer.documentType) ?: printer.documentType,
                         style = MaterialTheme.typography.titleMedium,
-                        color = Primary
+                        color = Primary,
+                        fontWeight = FontWeight.Bold
                     )
-                    Text(text = printer.name, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = printer.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
                     if (!printer.address.isNullOrBlank()) {
-                        Text(text = "IP: ${printer.address}", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-
                         Text(
-                            text = "Copias: ${printer.copyNumber}",
+                            text = if (printer.type == "BLUETOOTH") "MAC: ${printer.address}" else "IP: ${printer.address}",
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(end = 8.dp)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = "Chars: ${printer.charactersNumber}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-
                     }
-
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        InfoBadge(label = "Copias", value = printer.copyNumber.toString())
+                        InfoBadge(label = "Chars", value = printer.charactersNumber.toString())
+                    }
                 }
+                
                 IconButton(
                     onClick = { showDialog = true },
-
-
-
-                    ) {
+                    modifier = Modifier.size(32.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                 tint = Color.Red,
                         contentDescription = "Eliminar Impresora",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-
         }
     }
 
@@ -351,6 +373,23 @@ fun PrinterCard(
                     Text("Cancelar")
                 }
             }
+        )
+    }
+}
+
+@Composable
+fun InfoBadge(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "$label: ",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

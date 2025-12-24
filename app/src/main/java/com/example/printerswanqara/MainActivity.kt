@@ -26,6 +26,7 @@ import com.example.printerswanqara.ui.screens.tests.PrinterTestScreen
 import com.example.printerswanqara.ui.screens.message.MessageScreen
 import com.example.printerswanqara.data.AppStorage
 import com.example.printerswanqara.ui.screens.home.HomeScreen
+import com.example.printerswanqara.ui.screens.onboarding.OnboardingScreen
 import androidx.navigation.compose.NavHost
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
 
                 var isLoggedIn by remember { mutableStateOf(false) }
                 var isDomainValidated by remember { mutableStateOf(false) }
+                var isOnboardingCompleted by remember { mutableStateOf(true) } // Default to true to avoid flicker
                 val tokenDb = remember { TokenDatabaseHelper(context) }
                 // replace unused savedRuc with a rememberSaveable state so it survives configuration changes
                 val rucState = rememberSaveable { mutableStateOf(AppStorage.getRuc(context) ?: "") }
@@ -84,6 +86,7 @@ class MainActivity : ComponentActivity() {
                     isDomainValidated = !rucFromStorage.isNullOrBlank()
                     rucState.value = rucFromStorage
                     isLoggedIn = tokenDb.getToken() != null
+                    isOnboardingCompleted = AppStorage.isOnboardingCompleted(context)
 
                     if (isLoggedIn) {
                         try {
@@ -100,6 +103,19 @@ class MainActivity : ComponentActivity() {
                 val navEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navEntry?.destination?.route
                 when {
+                    !isOnboardingCompleted -> {
+                        OnboardingScreen(
+                            onOnboardingComplete = {
+                                isOnboardingCompleted = true
+                                // After onboarding, we should be logged in or at least have domain validated
+                                isDomainValidated = !AppStorage.getRuc(context).isNullOrBlank()
+                                isLoggedIn = tokenDb.getToken() != null
+                                rucState.value = AppStorage.getRuc(context) ?: ""
+                            },
+                            logoResId = R.drawable.ic_wanqara_logo_foreground
+                        )
+                    }
+
                     !isDomainValidated -> {
                         DomainValidationScreen(
                             onDomainValidated = {

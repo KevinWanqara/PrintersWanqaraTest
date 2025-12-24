@@ -325,6 +325,16 @@ fun AddPrinterScreen(navController: NavController) {
                             label = { Text("Dirección IP / Host") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = "51512",
+                            onValueChange = { },
+                            label = { Text("Puerto") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            enabled = false,
+                            supportingText = { Text("Puerto fijo para Printers Desktop") }
+                        )
                     }
                 }
                 Spacer(Modifier.weight(1f, fill = true))

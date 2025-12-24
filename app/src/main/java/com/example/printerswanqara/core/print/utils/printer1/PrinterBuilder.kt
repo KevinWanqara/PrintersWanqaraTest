@@ -321,11 +321,11 @@ class PrinterBuilder(private val tipo: String?) {
                 if (sj != null) {
                     val env = when (sj.optString("environment")) {
 
-                        "1" -> "Producción"
-                        else -> "Pruebas"
+                        "1" -> "Pruebas"
+                        else -> "Produccion"
                     }
                     prn.escribirTextoSinSalto("Ambiente: " + env)
-                    prn.escribirTextoSinSalto("Emision: " + "Normal")
+                    prn.escribirTextoSinSalto(" Emision: " + "Normal")
                 }
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Clave de Acceso/Nº de Autorización:")

@@ -24,13 +24,13 @@ private val DarkColorScheme = darkColorScheme(
     primary = Primary,
     secondary = Secondary,
     tertiary = Accent,
-    background = Background,
-    surface = Surface,
+    background = DarkBackground,
+    surface = DarkSurface,
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
-    onBackground = Color.White, // Ensures text/icons are visible on dark backgrounds
-    onSurface = Color.White,    // Ensures text/icons are visible on dark surfaces
+    onBackground = DarkOnBackground,
+    onSurface = DarkOnSurface,
     error = Error
 )
 
@@ -52,7 +52,7 @@ private val LightColorScheme = lightColorScheme(
 fun PrintersWanqaraTestTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
