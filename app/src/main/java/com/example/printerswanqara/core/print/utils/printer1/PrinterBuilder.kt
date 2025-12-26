@@ -1608,14 +1608,21 @@ class PrinterBuilder(private val tipo: String?) {
             val salesByHour = summary.optJSONObject("sales_by_hour")
             val movements = summary.optJSONArray("movements")
             val cashRegisterSettings = sj?.getJSONObject("printers")?.getJSONObject("cash_register")
+            val lineSpacing = cashRegisterSettings?.optBoolean("line_spacing",false)
 
             println("Printer Config: $cashRegisterSettings")
 
             val prn = PrinterHelpers(caracteres, copias)
             prn.iniciar()
             prn.setFontA()
+            if (lineSpacing == true ) {
+                println("Setting line spacing applied")
+                prn.lineHeight2()
+            }else {
+                println("Setting default line spacing")
+                prn.lineHeight()
+            }
 
-            prn.agregarSalto()
             prn.alineadoCentro()
             prn.negritaOn()
             prn.escribirTexto("Cierre de Caja")
@@ -1887,12 +1894,29 @@ class PrinterBuilder(private val tipo: String?) {
 
             prn.escribirTexto(cierreTxt)
             prn.agregarSalto()
+            prn.agregarSalto()
             prn.escribirTexto("------------------------")
             prn.escribirTexto("Firma")
             prn.agregarSalto()
             prn.escribirTexto("¡Gracias!")
 
-            prn.feedFinal()
+            val line_breaks = cashRegisterSettings?.optInt("line_breaks") ?: 0
+            for (i in 0 until line_breaks) {
+                prn.agregarSalto()
+            }
+
+            if(tipo == PrinterType.BLUETOOTH.type) {
+                prn.feed(6)
+            }else {
+                if (lineSpacing == true ) {
+                    println("Setting line spacing applied")
+                    prn.feed(7)
+                }else {
+                    println("Setting default line spacing")
+
+                    prn.feed(14)
+                }
+            }
             prn.cortar()
             enviarImprimir(prn.getTrabajo())
 
