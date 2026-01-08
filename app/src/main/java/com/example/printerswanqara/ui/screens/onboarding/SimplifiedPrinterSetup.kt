@@ -46,11 +46,18 @@ import com.example.printerswanqara.utils.NetworkScanner
 import com.example.printerswanqara.core.print.test.PrintUSBTest
 import com.example.printerswanqara.core.print.test.PrintWifiTest
 import com.example.printerswanqara.core.print.test.PrintBluetoothTest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import com.example.printerswanqara.domain.models.BluetoothController
 import kotlinx.coroutines.launch
 
 @Composable
 fun SimplifiedPrinterSetup(
-    onNext: () -> Unit
+    onNext: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -72,6 +79,23 @@ fun SimplifiedPrinterSetup(
 
     val bluetoothController = remember { AndroidBluetoothController(context) }
     val pairedDevices by bluetoothController.pairedDevices.collectAsState()
+
+    val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        arrayOf(
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT
+        )
+    } else {
+        arrayOf(Manifest.permission.BLUETOOTH_ADMIN)
+    }
+
+    val hasBluetoothPermissions by remember {
+        derivedStateOf {
+            requiredPermissions.all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+    }
     
     val modes = listOf(
         PrinterType.WIFI to Icons.Default.Wifi,
@@ -98,27 +122,31 @@ fun SimplifiedPrinterSetup(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (currentSubStep > 1) {
-                        IconButton(onClick = { currentSubStep-- }) {
+                        IconButton(onClick = { 
+                            currentSubStep--
+                        }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás", tint = Primary)
                         }
                     }
+                    val totalSteps = if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) 4 else 3
                     Text(
-                        text = "Paso $currentSubStep de 3",
+                        text = "Paso $currentSubStep de $totalSteps",
                         style = MaterialTheme.typography.labelLarge,
                         color = Primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 
-                TextButton(onClick = onNext) {
+                TextButton(onClick = { onNext(false) }) {
                     Text("Omitir", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
+            val totalSteps = if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) 4 else 3
             LinearProgressIndicator(
-                progress = { currentSubStep / 3f },
+                progress = { currentSubStep / totalSteps.toFloat() },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                 color = Primary,
                 trackColor = Primary.copy(alpha = 0.1f)
@@ -144,46 +172,107 @@ fun SimplifiedPrinterSetup(
                                 selectedMode = it
                                 // Set defaults based on mode
                                 if (it == PrinterType.SERVER) wifiPort = 51512 else if (it == PrinterType.WIFI) wifiPort = 9100
+                                // If BT and already has permissions, we can potentially skip step 2 if we are at step 1
+                                // But let's handle it in the Next button logic for simplicity
                             },
                             modes = modes
                         )
-                        2 -> StepConfigureDetails(
-                            selectedMode = selectedMode,
-                            wifiIp = wifiIp,
-                            onWifiIpChange = { wifiIp = it },
-                            wifiPort = wifiPort,
-                            onWifiPortChange = { wifiPort = it },
-                            bluetoothDevice = bluetoothDevice,
-                            onBluetoothDeviceChange = { bluetoothDevice = it },
-                            pairedDevices = pairedDevices,
-                            isScanning = isScanning,
-                            onScanRequested = {
-                                coroutineScope.launch {
-                                    isScanning = true
-                                    foundIps = NetworkScanner.scanLocalSubnet(51512)
-                                    isScanning = false
-                                }
-                            },
-                            foundIps = foundIps,
-                            isTesting = isTesting,
-                            onTestRequested = {
-                                coroutineScope.launch {
-                                    isTesting = true
-                                    try {
-                                        when (selectedMode) {
-                                            PrinterType.USB -> PrintUSBTest(context).runTest("A")
-                                            PrinterType.BLUETOOTH -> PrintBluetoothTest(context).invoke(bluetoothDevice, "A")
-                                            PrinterType.WIFI -> PrintWifiTest(wifiIp.trim(), wifiPort, "A").invoke()
-                                            PrinterType.SERVER -> snackbarHostState.showSnackbar("Test no disponible para servidor")
-                                        }
-                                    } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar("Error en el test: ${e.message}")
+                        2 -> {
+                            if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) {
+                                StepBluetoothPermissions(
+                                    bluetoothController = bluetoothController,
+                                    onPermissionsGranted = {
+                                        currentSubStep++
                                     }
-                                    isTesting = false
-                                }
+                                )
+                            } else {
+                                // If not bluetooth OR already has permissions, this step is actually ConfigureDetails
+                                StepConfigureDetails(
+                                    selectedMode = selectedMode,
+                                    wifiIp = wifiIp,
+                                    onWifiIpChange = { wifiIp = it },
+                                    wifiPort = wifiPort,
+                                    onWifiPortChange = { wifiPort = it },
+                                    bluetoothDevice = bluetoothDevice,
+                                    onBluetoothDeviceChange = { bluetoothDevice = it },
+                                    pairedDevices = pairedDevices,
+                                    isScanning = isScanning,
+                                    onScanRequested = {
+                                        coroutineScope.launch {
+                                            isScanning = true
+                                            foundIps = NetworkScanner.scanLocalSubnet(51512)
+                                            isScanning = false
+                                        }
+                                    },
+                                    foundIps = foundIps,
+                                    isTesting = isTesting,
+                                    onTestRequested = {
+                                        coroutineScope.launch {
+                                            isTesting = true
+                                            try {
+                                                when (selectedMode) {
+                                                    PrinterType.USB -> PrintUSBTest(context).runTest("A")
+                                                    PrinterType.BLUETOOTH -> PrintBluetoothTest(context).invoke(bluetoothDevice, "A")
+                                                    PrinterType.WIFI -> PrintWifiTest(wifiIp.trim(), wifiPort, "A").invoke()
+                                                    PrinterType.SERVER -> snackbarHostState.showSnackbar("Test no disponible para servidor")
+                                                }
+                                            } catch (e: Exception) {
+                                                snackbarHostState.showSnackbar("Error en el test: ${e.message}")
+                                            }
+                                            isTesting = false
+                                        }
+                                    }
+                                )
                             }
-                        )
-                        3 -> StepFinalize(
+                        }
+                        3 -> {
+                            if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) {
+                                StepConfigureDetails(
+                                    selectedMode = selectedMode,
+                                    wifiIp = wifiIp,
+                                    onWifiIpChange = { wifiIp = it },
+                                    wifiPort = wifiPort,
+                                    onWifiPortChange = { wifiPort = it },
+                                    bluetoothDevice = bluetoothDevice,
+                                    onBluetoothDeviceChange = { bluetoothDevice = it },
+                                    pairedDevices = pairedDevices,
+                                    isScanning = isScanning,
+                                    onScanRequested = {
+                                        coroutineScope.launch {
+                                            isScanning = true
+                                            foundIps = NetworkScanner.scanLocalSubnet(51512)
+                                            isScanning = false
+                                        }
+                                    },
+                                    foundIps = foundIps,
+                                    isTesting = isTesting,
+                                    onTestRequested = {
+                                        coroutineScope.launch {
+                                            isTesting = true
+                                            try {
+                                                when (selectedMode) {
+                                                    PrinterType.USB -> PrintUSBTest(context).runTest("A")
+                                                    PrinterType.BLUETOOTH -> PrintBluetoothTest(context).invoke(bluetoothDevice, "A")
+                                                    PrinterType.WIFI -> PrintWifiTest(wifiIp.trim(), wifiPort, "A").invoke()
+                                                    PrinterType.SERVER -> snackbarHostState.showSnackbar("Test no disponible para servidor")
+                                                }
+                                            } catch (e: Exception) {
+                                                snackbarHostState.showSnackbar("Error en el test: ${e.message}")
+                                            }
+                                            isTesting = false
+                                        }
+                                    }
+                                )
+                            } else {
+                                StepFinalize(
+                                    printerName = printerName,
+                                    onPrinterNameChange = { printerName = it },
+                                    characters = characters,
+                                    onCharactersChange = { characters = it }
+                                )
+                            }
+                        }
+                        4 -> StepFinalize(
                             printerName = printerName,
                             onPrinterNameChange = { printerName = it },
                             characters = characters,
@@ -197,7 +286,8 @@ fun SimplifiedPrinterSetup(
 
             Button(
                 onClick = {
-                    if (currentSubStep < 3) {
+                    val totalSteps = if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) 4 else 3
+                    if (currentSubStep < totalSteps) {
                         currentSubStep++
                     } else {
                         coroutineScope.launch {
@@ -216,7 +306,7 @@ fun SimplifiedPrinterSetup(
                             }
                             
                             if (allSuccess) {
-                                onNext()
+                                onNext(true)
                             } else {
                                 snackbarHostState.showSnackbar("Error al guardar algunas configuraciones")
                             }
@@ -227,17 +317,28 @@ fun SimplifiedPrinterSetup(
                 shape = RoundedCornerShape(16.dp),
                 enabled = when (currentSubStep) {
                     1 -> true
-                    2 -> when (selectedMode) {
-                        PrinterType.USB -> true
-                        PrinterType.BLUETOOTH -> bluetoothDevice.isNotBlank()
-                        PrinterType.WIFI, PrinterType.SERVER -> wifiIp.isNotBlank()
+                    2 -> if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) {
+                        true 
+                    } else {
+                        when (selectedMode) {
+                            PrinterType.USB -> true
+                            PrinterType.WIFI, PrinterType.SERVER -> wifiIp.isNotBlank()
+                            PrinterType.BLUETOOTH -> bluetoothDevice.isNotBlank() // Case where permissions are already granted
+                            else -> false
+                        }
                     }
-                    3 -> printerName.isNotBlank()
+                    3 -> if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) {
+                        bluetoothDevice.isNotBlank()
+                    } else {
+                        printerName.isNotBlank()
+                    }
+                    4 -> printerName.isNotBlank()
                     else -> false
                 }
             ) {
-                Text(if (currentSubStep < 3) "Siguiente" else "Guardar y Continuar", fontWeight = FontWeight.Bold)
-                if (currentSubStep < 3) {
+                val totalSteps = if (selectedMode == PrinterType.BLUETOOTH && !hasBluetoothPermissions) 4 else 3
+                Text(if (currentSubStep < totalSteps) "Siguiente" else "Guardar y Continuar", fontWeight = FontWeight.Bold)
+                if (currentSubStep < totalSteps) {
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                 }
@@ -474,7 +575,7 @@ fun StepConfigureDetails(
             PrinterType.WIFI, PrinterType.SERVER -> {
                 Text(
                     text = if (selectedMode == PrinterType.WIFI) "Conexión WiFi: Ideal para impresoras de cocina o compartidas." 
-                           else "Servidor: Permite imprimir desde cualquier lugar a través de internet.",
+                           else "Servidor: Permite imprimir desde una computadora como servidor usando el aplicativo Wanqara Desktop.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -755,6 +856,113 @@ fun InfoCard(icon: ImageVector, title: String, description: String) {
                 Text(title, fontWeight = FontWeight.Bold)
                 Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+    }
+}
+
+@Composable
+fun StepBluetoothPermissions(
+    bluetoothController: BluetoothController,
+    onPermissionsGranted: () -> Unit
+) {
+    val context = LocalContext.current
+    val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        arrayOf(
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT
+        )
+    } else {
+        arrayOf(Manifest.permission.BLUETOOTH_ADMIN)
+    }
+
+    var permissionsGranted by remember {
+        mutableStateOf(
+            requiredPermissions.all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
+        )
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        if (results.values.all { it }) {
+            permissionsGranted = true
+            bluetoothController.updatePairedDevices()
+            onPermissionsGranted()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "Permisos de Bluetooth",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .background(Primary.copy(alpha = 0.1f), RoundedCornerShape(60.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Bluetooth,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = Primary
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            "Para conectar con tu impresora, necesitamos permiso para buscar y conectarnos a dispositivos Bluetooth cercanos.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        if (!permissionsGranted) {
+            Button(
+                onClick = { launcher.launch(requiredPermissions) },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Default.LockOpen, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Conceder Permisos", fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFE8F5E9), RoundedCornerShape(12.dp))
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "Permisos concedidos correctamente",
+                    color = Color(0xFF2E7D32),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                "Toca 'Siguiente' para continuar",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

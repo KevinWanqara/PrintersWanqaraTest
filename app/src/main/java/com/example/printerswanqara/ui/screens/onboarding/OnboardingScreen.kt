@@ -49,6 +49,7 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val hasSession = remember { !AppStorage.getToken(context).isNullOrBlank() }
+    var printerConfigured by remember { mutableStateOf(false) }
     val pageCount = if (hasSession) 3 else 5
     val pagerState = rememberPagerState(pageCount = { pageCount })
     val coroutineScope = rememberCoroutineScope()
@@ -70,9 +71,15 @@ fun OnboardingScreen(
                         logoResId = logoResId
                     )
                     1 -> PrinterSetupSlide(
-                        onNext = { 
+                        onNext = { configured ->
+                            printerConfigured = configured
                             if (hasSession) {
-                                coroutineScope.launch { pagerState.animateScrollToPage(2) }
+                                if (configured) {
+                                    coroutineScope.launch { pagerState.animateScrollToPage(2) }
+                                } else {
+                                    AppStorage.setOnboardingCompleted(context, true)
+                                    onOnboardingComplete()
+                                }
                             } else {
                                 coroutineScope.launch { pagerState.animateScrollToPage(2) }
                             }
@@ -95,7 +102,12 @@ fun OnboardingScreen(
                     3 -> {
                         LoginWithDomainSlide(
                             onLoginSuccess = {
-                                coroutineScope.launch { pagerState.animateScrollToPage(4) }
+                                if (printerConfigured) {
+                                    coroutineScope.launch { pagerState.animateScrollToPage(4) }
+                                } else {
+                                    AppStorage.setOnboardingCompleted(context, true)
+                                    onOnboardingComplete()
+                                }
                             },
                             logoResId = logoResId
                         )
@@ -318,7 +330,7 @@ fun WelcomeSlide(onNext: () -> Unit, logoResId: Int) {
 }
 
 @Composable
-fun PrinterSetupSlide(onNext: () -> Unit) {
+fun PrinterSetupSlide(onNext: (Boolean) -> Unit) {
     SimplifiedPrinterSetup(onNext = onNext)
 }
 

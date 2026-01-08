@@ -14,6 +14,7 @@ interface BluetoothController {
     fun connectToDevice(device: BluetoothDomain): Flow<ConnectionResult>
     fun pairDevice(device: BluetoothDomain, onResult: (Boolean) -> Unit)
 
+    fun updatePairedDevices()
     fun closeConnection()
     fun release()
 }

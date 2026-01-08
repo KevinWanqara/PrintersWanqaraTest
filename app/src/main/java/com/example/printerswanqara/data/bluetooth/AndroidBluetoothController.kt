@@ -148,7 +148,7 @@ class AndroidBluetoothController(
         currentClientSocket = null
     }
 
-    private fun updatePairedDevices() {
+    override fun updatePairedDevices() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
                 return
