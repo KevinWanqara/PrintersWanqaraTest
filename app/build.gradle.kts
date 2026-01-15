@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,17 @@ plugins {
     id("com.google.dagger.hilt.android") version "2.44"
     kotlin("kapt")
 
+}
+
+
+val localProperties = Properties()
+val localFile = rootProject.file("local.properties")
+if (localFile.exists()) {
+    localProperties.load(localFile.inputStream())
+}
+
+fun getEnvOrProperty(name: String, defaultValue: String): String {
+    return System.getenv(name) ?: localProperties.getProperty(name) ?: defaultValue
 }
 
 android {
@@ -26,13 +39,15 @@ android {
         debug{
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
-            buildConfigField("String", "BASE_URL", "\"https://system.wanqara.org/api/v1/\"")
+            val baseUrl = getEnvOrProperty("BASE_URL_DEBUG", "")
+            buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
 
         }
         release {
             applicationIdSuffix = ".release"
             versionNameSuffix = "-RELEASE"
-            buildConfigField("String", "BASE_URL", "\"https://system.wanqara.app/api/v1/\"")
+            val baseUrl = getEnvOrProperty("BASE_URL_RELEASE", "")
+            buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
 
             isMinifyEnabled = false
             proguardFiles(
@@ -121,6 +136,3 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 }
-
-
-

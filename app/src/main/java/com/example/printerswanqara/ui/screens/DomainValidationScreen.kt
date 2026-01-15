@@ -128,6 +128,7 @@ fun DomainValidationScreen(
                         } catch (e: Exception) {
                             errorMessage = "Error al validar el dominio: ${e.localizedMessage}"
                             Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            e.printStackTrace()
                         } finally {
                             loading = false
                         }

@@ -18,6 +18,11 @@ import com.example.printerswanqara.api.quotes.QuotesService
 import com.example.printerswanqara.api.orderPrint.OrderPrintService
 
 import com.example.printerswanqara.BuildConfig
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
+
 // Data classes for login
 data class LoginRequest(val email: String, val password: String)
 data class LoginResponse(
@@ -196,9 +201,40 @@ object ApiClient {
 
     //private const val BASE_URL = "https://system.wanqara.org/api/v1/"
     //private const val BASE_URL = "https://system.wanqara.app/api/v1/"
+
+    private fun getUnsafeOkHttpClientBuilder(): OkHttpClient.Builder {
+        try {
+            // Create a trust manager that does not validate certificate chains
+            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                }
+
+                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                }
+
+                override fun getAcceptedIssuers(): Array<X509Certificate> {
+                    return arrayOf()
+                }
+            })
+
+            // Install the all-trusting trust manager
+            val sslContext = SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+            // Create an ssl socket factory with our all-trusting manager
+            val sslSocketFactory = sslContext.socketFactory
+
+            val builder = OkHttpClient.Builder()
+            builder.sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
+            builder.hostnameVerifier { _, _ -> true }
+            return builder
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
+    }
+
     // Provide context when building the client
     fun createApiService(context: Context, withTenant: Boolean = true): ApiService {
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
             .addInterceptor { chain ->
                 val original: Request = chain.request()
                 val ruc = AppStorage.getRuc(context)
@@ -235,7 +271,7 @@ object ApiClient {
 
     fun createBaseInfoService(context: Context): BaseInfoService {
 
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
 
             .addInterceptor { chain ->
                 val original: Request = chain.request()
@@ -267,7 +303,7 @@ object ApiClient {
 
     fun createSalesService(context: Context): SalesService {
 
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
 
             .addInterceptor { chain ->
                 val original: Request = chain.request()
@@ -299,7 +335,7 @@ object ApiClient {
 
     fun createQuotesService(context: Context): QuotesService {
 
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
 
             .addInterceptor { chain ->
                 val original: Request = chain.request()
@@ -331,7 +367,7 @@ object ApiClient {
 
     fun createOrderService(context: Context): OrderService {
 
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
 
             .addInterceptor { chain ->
                 val original: Request = chain.request()
@@ -363,7 +399,7 @@ object ApiClient {
 
     fun createCashRegisterService(context: Context): CashRegisterService {
 
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
 
             .addInterceptor { chain ->
                 val original: Request = chain.request()
@@ -395,7 +431,7 @@ object ApiClient {
 
     fun createOrderPrintService(context: Context): OrderPrintService {
 
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
 
             .addInterceptor { chain ->
                 val original: Request = chain.request()
@@ -426,7 +462,7 @@ object ApiClient {
     }
 
     fun createDynamicPrinterService(context: Context, baseUrl: String): DynamicPrinterService {
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
             .addInterceptor { chain ->
                 val original: Request = chain.request()
                 // We might not need headers for local IP, but keeping consistent with user request to "use this"
@@ -456,7 +492,7 @@ object ApiClient {
     }
 
     fun createServerPrinterService(context: Context, baseUrl: String): ServerPrinterService {
-        val client = OkHttpClient.Builder()
+        val client = getUnsafeOkHttpClientBuilder()
             .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
             .writeTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
@@ -477,5 +513,3 @@ object ApiClient {
     }
 
 }
-
-
