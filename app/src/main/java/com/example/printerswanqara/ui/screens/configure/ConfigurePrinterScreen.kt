@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 //import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.WrapText
+import androidx.compose.material.icons.filled.FormatListNumbered
 //import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -152,6 +153,8 @@ fun PrinterProfileCard(title: String, details: com.example.printerswanqara.api.P
                 Column(modifier = Modifier.padding(bottom = 8.dp)) {
                     ProfileRow(label = "Fuente", value = details.font, icon = Icons.Filled.TextFields)
                     ProfileRow(label = "Saltos de línea", value = details.line_breaks?.toString(), icon = Icons.AutoMirrored.Filled.WrapText)
+                    ProfileRow(label = "Copias", value = details.copies?.toString(), icon = Icons.Filled.FormatListNumbered)
+
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 // Boolean values section

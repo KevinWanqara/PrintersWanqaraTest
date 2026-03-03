@@ -10,7 +10,8 @@ class documentType {
         "IMPRESION_COMANDA:OTROS" to "Comandas otros",
         "IMPRESION_COTIZACION" to "Cotizaciones",
         "APERTURA_GAVETA" to "Gaveta de dinero",
-        "IMPRESION_CIERRE_CAJA" to "Cierre de caja"
+        "IMPRESION_CIERRE_CAJA" to "Cierre de caja",
+        "IMPRESION_ABONO_CUENTA" to "Abono de cuentas"
     )
 
     fun getDocuments():MutableList<String>{

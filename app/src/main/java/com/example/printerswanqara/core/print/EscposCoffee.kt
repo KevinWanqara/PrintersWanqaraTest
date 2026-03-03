@@ -2,6 +2,8 @@ package com.example.printerswanqara.core.print
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
 import com.example.printerswanqara.core.print.Imp.BitmapCoffeeImage
 import com.example.printerswanqara.core.print.messageBuilder.BodyBuilder
 import com.example.printerswanqara.core.print.messageBuilder.MediaBuilder
@@ -17,6 +19,8 @@ import com.github.anastaciocintra.escpos.image.Bitonal
 import com.github.anastaciocintra.escpos.image.BitonalOrderedDither
 import com.github.anastaciocintra.escpos.image.EscPosImage
 import com.github.anastaciocintra.escpos.image.RasterBitImageWrapper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.OutputStream
 import java.net.URL
@@ -28,11 +32,15 @@ class EscposCoffee : PrinterLibraryRepository {
     private var style: Style
     private val outputStream: OutputStream
     private val escPos: EscPos
+    private var printerCharacters: Int = 32
+    private var fontName: String = "A"
 
-    constructor(style: Style, outputStream: OutputStream) {
+    constructor(style: Style, outputStream: OutputStream, printerCharacters: Int = 32, fontName: String = "A") {
         this.style = style
         this.outputStream = outputStream
         this.escPos = EscPos(outputStream)
+        this.printerCharacters = printerCharacters
+        this.fontName = fontName
     }
 
     fun setStyle(style: Style) {
@@ -256,34 +264,63 @@ class EscposCoffee : PrinterLibraryRepository {
         this.escPos.close()
     }
 
+
     internal suspend fun printImageFromUrl(escpos: EscPos, imageUrl: String) {
-        try {
-            val inputStream = URL(imageUrl).openStream()
-            var image: Bitmap = BitmapFactory.decodeStream(inputStream)
-            val maxWidth = 150
+        withContext(Dispatchers.IO) {
+            try {
+                val inputStream = URL(imageUrl).openStream()
+                var image: Bitmap = BitmapFactory.decodeStream(inputStream)
+                // Use 152 for logo width (divisible by 8)
+                val logoWidth = 152
+                // Calculate printer width based on characters (Font A is typically 12 dots wide)
+                // e.g., 32 chars * 12 = 384 dots (58mm)
+
+                // Determine multiplier based on font.
+                // Font A: 12 dots. Font B: 9 dots.
+                // Assuming "A" is default (12x24) and "B" is smaller (9x17)
+                // If checking for "AA" (Double width/height A) or "BB" (Double width/height B),
+                // the character count usually adjusts inversely, but the total width remains same.
+                // The physical width in dots is constant for a printer (384 or 576).
+                // But the 'printerCharacters' count provided by user is what fits in a line.
+                // printerWidth = printerCharacters * charWidth
+
+                val charWidth = if (fontName.equals("B", ignoreCase = true)) 9
+                                else if (fontName.equals("A", ignoreCase = true)) 12
+                                else 12 // Default to 12
+
+                val printerWidth = this@EscposCoffee.printerCharacters * charWidth
 
 // Crop to 1:1 aspect ratio (centered square)
-            val size = minOf(image.width, image.height)
-            val xOffset = (image.width - size) / 2
-            val yOffset = (image.height - size) / 2
-            image = Bitmap.createBitmap(image, xOffset, yOffset, size, size)
+                val size = minOf(image.width, image.height)
+                val xOffset = (image.width - size) / 2
+                val yOffset = (image.height - size) / 2
+                image = Bitmap.createBitmap(image, xOffset, yOffset, size, size)
 
-// Resize to maxWidth x maxWidth (cover)
-            if (size != maxWidth) {
-                image = Bitmap.createScaledBitmap(image, maxWidth, maxWidth, true)
+// Resize to logoWidth x logoWidth
+                if (image.width != logoWidth || image.height != logoWidth) {
+                    image = Bitmap.createScaledBitmap(image, logoWidth, logoWidth, true)
+                }
+
+                // Create a canvas with the full printer width and center the logo manually
+                val finalBitmap = Bitmap.createBitmap(printerWidth, logoWidth, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(finalBitmap)
+                canvas.drawColor(Color.WHITE)
+                val leftPos = (printerWidth - logoWidth) / 2f
+                canvas.drawBitmap(image, leftPos, 0f, null)
+
+
+                val algorithm: Bitonal = BitonalOrderedDither()
+                val imageWrapper = RasterBitImageWrapper()
+                // Set justification to Left (default). Since the logo is manually centered in the bitmap,
+                // and Left alignment is the default state that printers revert to, alignment persists across chunks.
+                imageWrapper.setJustification(EscPosConst.Justification.Left_Default)
+                val escposImage = EscPosImage(BitmapCoffeeImage(finalBitmap), algorithm)
+                escpos.write(imageWrapper, escposImage)
+                escpos.feed(1)
+
+            } catch (e: Exception) {
+                println(e)
             }
-
-            val algorithm: Bitonal = BitonalOrderedDither()
-            val imageWrapper = RasterBitImageWrapper()
-            imageWrapper.setJustification(EscPosConst.Justification.Center)
-            val escposImage = EscPosImage(BitmapCoffeeImage(image), algorithm)
-            escpos.write(imageWrapper, escposImage)
-            escpos.feed(1)
-
-
-
-        } catch (e: Exception) {
-            println(e)
         }
     }
 

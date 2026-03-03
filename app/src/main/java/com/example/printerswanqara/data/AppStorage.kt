@@ -73,8 +73,17 @@ object AppStorage {
             remove(AUTH_TOKEN)
             remove(SETTINGS)
             remove(USER_DATA)
-            remove(ONBOARDING_COMPLETED)
         }
+        val intent = android.content.Intent(context, com.example.printerswanqara.MainActivity::class.java)
+        intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+        context.startActivity(intent)
+    }
+
+    fun handleSessionExpiry(context: Context) {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(context, "Sesión inválida, por favor reingrese", android.widget.Toast.LENGTH_LONG).show()
+        }
+        clearSession(context)
     }
 
     fun isOnboardingCompleted(context: Context): Boolean {

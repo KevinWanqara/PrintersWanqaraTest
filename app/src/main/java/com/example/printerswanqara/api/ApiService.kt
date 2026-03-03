@@ -1,5 +1,6 @@
 package com.example.printerswanqara.api
 
+import PaymentAccountService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
@@ -254,7 +255,16 @@ object ApiClient {
 
                 }
 
-                chain.proceed(requestBuilder.build())
+                val response = chain.proceed(requestBuilder.build())
+
+                // Check for 401 error code to invalidate session
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    // Clear session data
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
             }
             .build()
         val retrofit = Retrofit.Builder()
@@ -290,7 +300,14 @@ object ApiClient {
                 } else {
                     println("No token found, Authorization header not added")
                 }
-                chain.proceed(requestBuilder.build())
+                val response = chain.proceed(requestBuilder.build())
+
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
             }
             .build()
         val retrofit = Retrofit.Builder()
@@ -322,7 +339,14 @@ object ApiClient {
                 } else {
                     println("No token found, Authorization header not added")
                 }
-                chain.proceed(requestBuilder.build())
+                val response = chain.proceed(requestBuilder.build())
+
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
             }
             .build()
         val retrofit = Retrofit.Builder()
@@ -354,7 +378,14 @@ object ApiClient {
                 } else {
                     println("No token found, Authorization header not added")
                 }
-                chain.proceed(requestBuilder.build())
+                val response = chain.proceed(requestBuilder.build())
+
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
             }
             .build()
         val retrofit = Retrofit.Builder()
@@ -386,7 +417,14 @@ object ApiClient {
                 } else {
                     println("No token found, Authorization header not added")
                 }
-                chain.proceed(requestBuilder.build())
+                val response = chain.proceed(requestBuilder.build())
+
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
             }
             .build()
         val retrofit = Retrofit.Builder()
@@ -418,7 +456,14 @@ object ApiClient {
                 } else {
                     println("No token found, Authorization header not added")
                 }
-                chain.proceed(requestBuilder.build())
+                val response = chain.proceed(requestBuilder.build())
+
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
             }
             .build()
         val retrofit = Retrofit.Builder()
@@ -450,7 +495,14 @@ object ApiClient {
                 } else {
                     println("No token found, Authorization header not added")
                 }
-                chain.proceed(requestBuilder.build())
+                val response = chain.proceed(requestBuilder.build())
+
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
             }
             .build()
         val retrofit = Retrofit.Builder()
@@ -459,6 +511,44 @@ object ApiClient {
             .client(client)
             .build()
         return retrofit.create(OrderPrintService::class.java)
+    }
+    fun createPaymentAccountService(context: Context): PaymentAccountService {
+
+        val client = getUnsafeOkHttpClientBuilder()
+
+            .addInterceptor { chain ->
+                val original: Request = chain.request()
+                val ruc = AppStorage.getRuc(context)
+                val token = AppStorage.getToken(context)
+                println("RUC from storage: $ruc")
+                val requestBuilder = original.newBuilder()
+                    .addHeader("Accept", "application/json")
+                if (ruc != null) {
+                    println("Adding X-tenant header with RUC: $ruc")
+                    requestBuilder.addHeader("X-tenant", ruc.trim())
+                }
+                if (token != null) {
+                    println("Adding Authorization header with token: $token")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    println("No token found, Authorization header not added")
+                }
+                val response = chain.proceed(requestBuilder.build())
+
+                if (response.code == 401) {
+                    println("API returned 401. Deleting session values.")
+                    AppStorage.handleSessionExpiry(context)
+                }
+
+                response
+            }
+            .build()
+        val retrofit = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+        return retrofit.create(PaymentAccountService::class.java)
     }
 
     fun createDynamicPrinterService(context: Context, baseUrl: String): DynamicPrinterService {

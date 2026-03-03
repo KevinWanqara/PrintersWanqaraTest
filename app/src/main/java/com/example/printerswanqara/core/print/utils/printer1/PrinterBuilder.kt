@@ -2,7 +2,6 @@ package com.example.printerswanqara.core.print.utils.printer1
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
-import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -30,17 +29,16 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 import java.util.UUID
 import androidx.core.content.edit
+import com.example.printerswanqara.data.AppStorage
 
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.TimeZone
 import kotlin.compareTo
 import kotlin.text.format
-import kotlin.times
-import kotlin.toString
 
 
-class PrinterBuilder(private val tipo: String?) {
+class PrinterBuilder(private val tipo: String?,    private val context: Context,) {
     companion object {
         @Volatile
         var diagnosticsListener: ((event: PrinterDiagnosticsEvent) -> Unit)? = null
@@ -219,7 +217,6 @@ class PrinterBuilder(private val tipo: String?) {
     suspend fun imprimirFacturaElectronica(
         js: JSONObject?,
         sj: JSONObject?,
-        copias: Int,
         caracteres: Int
     ) {
         println("Imprimiendo factura electronica")
@@ -236,13 +233,21 @@ class PrinterBuilder(private val tipo: String?) {
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("invoice")
             println("Printer Config: $printerConfig")
 
+            val configCopies: Int = printerConfig?.let { cfg ->
+                when (val v = cfg.opt("copies")) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 1
+                    else -> 1
+                }
+            } ?: 1
 
+            println("Copias configuradas $configCopies")
 
-            for (i in 0 until copias) {
+            for (i in 0 until configCopies) {
                 println("Imprimiendo copia $i")
 
                 // imprimir
-                val prn = PrinterHelpers(caracteres, copias)
+                val prn = PrinterHelpers(caracteres, configCopies)
                 prn.iniciar()
                 prn.dobleAltoOn()
                 val lineSpacing = printerConfig?.optBoolean("line_spacing")
@@ -258,17 +263,12 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.alineadoCentro()
 
 
+
+
+
                 //Font selection based on printerConfig
                 val fontType = printerConfig?.optString("font") ?: "A"
                 println("Font Type: $fontType")
-                when (fontType.uppercase()) {
-                    "A" -> prn.setFontA() //Normal
-                    "B" -> prn.setFontB() //Pequeña
-                    "AA" -> prn.setFontAA() //Extra Grande
-                    "BB" -> prn.setFontBB() //Grande
-
-                }
-
 
                 // Validate if the "image" key exists
                 val subsidiary = js.optJSONObject("subsidiary")
@@ -276,9 +276,18 @@ class PrinterBuilder(private val tipo: String?) {
                 val url = image?.optString("full_path", "")
 
                 if (!url.isNullOrEmpty() && logo == true) {
-                    prn.logo(url, this)
+                    prn.logo(url, this, fontType)
                 } else {
                     println("Image URL is missing or invalid.")
+                }
+
+
+                when (fontType.uppercase()) {
+                    "A" -> prn.setFontA() //Normal
+                    "B" -> prn.setFontB() //Pequeña
+                    "AA" -> prn.setFontAA() //Extra Grande
+                    "BB" -> prn.setFontBB() //Grande
+
                 }
                 if (sj != null) {
 
@@ -567,16 +576,16 @@ class PrinterBuilder(private val tipo: String?) {
                 println("Comandos")
                 println(prn.getTrabajo())
                 enviarImprimir(prn.getTrabajo())
-                closeAll()
 
             }
+            closeAll()
 
         } catch (e: JSONException) {
             e.printStackTrace()
         }
     }
 
-    suspend fun imprimirRecibo(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int) {
+    suspend fun imprimirRecibo(js: JSONObject?, sj : JSONObject?, caracteres: Int) {
 
         println("Imprimiendo recibo")
         println(js.toString())
@@ -588,29 +597,30 @@ class PrinterBuilder(private val tipo: String?) {
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
             println("Printer Config: $printerConfig")
 
-            val prn = PrinterHelpers(caracteres, copias)
-            val lineSpacing = printerConfig?.optBoolean("line_spacing")
-            val logo = printerConfig?.optBoolean("logo")
-            //Font selection based on printerConfig
-            val fontType = printerConfig?.optString("font") ?: "A"
-            println("Font Type: $fontType")
+            val configCopies: Int = printerConfig?.let { cfg ->
+                when (val v = cfg.opt("copies")) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 1
+                    else -> 1
+                }
+            } ?: 1
 
 
-            for (i in 0 until copias) {
+
+
+
+
+            for (i in 0 until configCopies) {
                 println("Imprimiendo copia $i")
+                val prn = PrinterHelpers(caracteres, configCopies)
                 // imprimir
                 prn.iniciar()
                 //prn.dobleAltoOn()
 
-                when (fontType.uppercase()) {
-                    "A" -> prn.setFontA() //Normal
-                    "B" -> prn.setFontB() //Pequeña
-                    "AA" -> prn.setFontAA() //Extra Grande
-                    "BB" -> prn.setFontBB() //Grande
 
-                }
-
-
+                val lineSpacing = printerConfig?.optBoolean("line_spacing")
+                val logo = printerConfig?.optBoolean("logo")
+                //Font selection based on printerConfig
 
                 if (lineSpacing == true ) {
                     println("Setting line spacing applied")
@@ -623,16 +633,27 @@ class PrinterBuilder(private val tipo: String?) {
 
                 prn.alineadoCentro()
 
-                prn.agregarSalto()
+
+                val fontType = printerConfig?.optString("font") ?: "A"
+                println("Font Type: $fontType")
+
                 // Validate if the "image" key exists
                 val subsidiary = js.optJSONObject("subsidiary")
                 val image = subsidiary?.optJSONObject("image")
                 val url = image?.optString("full_path", "")
 
                 if (!url.isNullOrEmpty() && logo == true) {
-                    prn.logo(url, this)
+                    prn.logo(url, this, fontType)
                 } else {
                     println("Image URL is missing or invalid.")
+                }
+
+                when (fontType.uppercase()) {
+                    "A" -> prn.setFontA() //Normal
+                    "B" -> prn.setFontB() //Pequeña
+                    "AA" -> prn.setFontAA() //Extra Grande
+                    "BB" -> prn.setFontBB() //Grande
+
                 }
                 if (sj != null) {
                     if (sj.optString("business_name") != "null") {
@@ -776,7 +797,7 @@ class PrinterBuilder(private val tipo: String?) {
                 }
 
 
-// Print IVA sorted by rate
+                // Print IVA sorted by rate
                 //Imprimir Propina
                 val additional_tip = js.optString("additional_tip", "")
                 if (!additional_tip.isNullOrEmpty()) {
@@ -917,18 +938,26 @@ class PrinterBuilder(private val tipo: String?) {
 
     }
 
-    suspend fun imprimirCotizacion(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int) {
+    suspend fun imprimirCotizacion(js: JSONObject?, sj : JSONObject?, caracteres: Int) {
 
         println("Imprimiendo cotizacion")
         println(js.toString())
         try {
             if (js == null) return
             var detalles: JSONArray
+            var paymentMethods : JSONArray
             var jo: JSONObject
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("receipt")
             println("Printer Config: $printerConfig")
 
-            val prn = PrinterHelpers(caracteres, copias)
+            val configCopies: Int = printerConfig?.let { cfg ->
+                when (val v = cfg.opt("copies")) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 1
+                    else -> 1
+                }
+            } ?: 1
+
             val lineSpacing = printerConfig?.optBoolean("line_spacing")
             val logo = printerConfig?.optBoolean("logo")
             //Font selection based on printerConfig
@@ -936,8 +965,11 @@ class PrinterBuilder(private val tipo: String?) {
             println("Font Type: $fontType")
 
 
-            for (i in 0 until copias) {
+            for (i in 0 until configCopies) {
                 println("Imprimiendo copia $i")
+                val prn = PrinterHelpers(caracteres, configCopies)
+
+
                 // imprimir
                 prn.iniciar()
                 //prn.dobleAltoOn()
@@ -947,10 +979,7 @@ class PrinterBuilder(private val tipo: String?) {
                     "B" -> prn.setFontB() //Pequeña
                     "AA" -> prn.setFontAA() //Extra Grande
                     "BB" -> prn.setFontBB() //Grande
-
                 }
-
-
 
                 if (lineSpacing == true ) {
                     println("Setting line spacing applied")
@@ -960,8 +989,10 @@ class PrinterBuilder(private val tipo: String?) {
                     prn.lineHeight()
                 }
 
-
                 prn.alineadoCentro()
+                //Font selection based on printerConfig
+                val fontType = printerConfig?.optString("font") ?: "A"
+                println("Font Type: $fontType")
 
                 prn.agregarSalto()
                 // Validate if the "image" key exists
@@ -970,9 +1001,16 @@ class PrinterBuilder(private val tipo: String?) {
                 val url = image?.optString("full_path", "")
 
                 if (!url.isNullOrEmpty() && logo == true) {
-                    prn.logo(url, this)
+                    prn.logo(url, this, fontType)
                 } else {
                     println("Image URL is missing or invalid.")
+                }
+                when (fontType.uppercase()) {
+                    "A" -> prn.setFontA() //Normal
+                    "B" -> prn.setFontB() //Pequeña
+                    "AA" -> prn.setFontAA() //Extra Grande
+                    "BB" -> prn.setFontBB() //Grande
+
                 }
                 if (sj != null) {
                     if (sj.optString("business_name") != "null") {
@@ -1122,26 +1160,99 @@ class PrinterBuilder(private val tipo: String?) {
                 }
 
 
-
-
                 //Agregar total
                 prn.escribirTextoSinSalto("Total:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
-
-
-
-
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
                 prn.agregarSalto()
-                val observation = js.optString("observation", "")
-                if (!observation.isNullOrEmpty()) {
-                    prn.alineadoIzquierdaForce("Observacion: ")
-                    prn.alineadoIzquierdaForce(observation)
+                prn.escribirTextoSinSalto("Entrega:")
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
+                prn.agregarSalto()
+
+                prn.escribirTextoSinSalto("Cambio:")
+
+                prn.agregarCaracteresDerecha(
+                    10,
+                    df.format(js.optDouble("change_amount" ,0.0)).replace("-", "")
+                )
+                prn.agregarSalto()
+                paymentMethods = js.getJSONArray("payment_methods")
+
+                prn.LineasGuion()
+                prn.alineadoIzquierda()
+                prn.escribirTextoSinSalto("Formas de Pago")
+                prn.agregarSalto()
+                prn.LineasIgual()
+
+                for (j in 0 until paymentMethods.length()) {
+                    jo = paymentMethods.getJSONObject(j)
+
+                    val name = jo.optString("name")
+                    val amount = df.format(jo.optDouble("amount", 0.0))
+
+
+
+                    prn.escribirTextoSinSalto(name )
+                    val nameLength = name.length
+                    val amountLength = amount.length
+
+                    prn.agregarCaracteres((caracteres - nameLength-amountLength).coerceAtLeast(0), "")
+                    prn.escribirTextoSinSalto(amount)
+
+                    prn.agregarSalto()
+
                 }
 
-                val paymentTerms = js.optString("payment_terms", "")
-                if (!paymentTerms.isNullOrEmpty()) {
-                    prn.alineadoIzquierdaForce("Condiciones de Pago: ")
-                    prn.alineadoIzquierdaForce(paymentTerms)
+
+                prn.LineasGuion()
+                val observation = js.optString("observation", "")
+                if (!observation.isNullOrEmpty()) {
+                    prn.alineadoIzquierdaForce(observation)
+                }
+                if (printerConfig != null) {
+                    if (printerConfig.optBoolean("observation", false) && subsidiary != null) {
+                        val subsidiaryObservation = subsidiary.optString("observation", "")
+                        if (!subsidiaryObservation.isNullOrEmpty()) {
+                            prn.alineadoIzquierdaForce(subsidiaryObservation)
+                        }
+                    }
+                }
+
+                val orderData = js.optJSONObject("order" ) ?: JSONObject()
+                val deliveryRecord = orderData.optJSONObject("delivery_record")
+
+
+                if(deliveryRecord != null) {
+
+
+                    prn.LineasIgual()
+                    val delivery = deliveryRecord.optJSONObject("delivery")
+                    val address = deliveryRecord.optJSONObject("address")
+
+
+
+                    prn.alineadoIzquierda()
+
+
+                    prn.agregarTexto( "Dirección: ")
+                    if (address != null) {
+                        prn.agregarTexto( deliveryRecord.optString("address_string", "N/A")+"/" + address.optString("observation", "N/A"))
+                    }
+
+
+                    if (delivery != null) {
+                        prn.agregarTexto("Nombre: " +  delivery.optString("name", "N/A"))
+                        prn.agregarTexto("Teléfono: " + delivery.optString("phone" ,"N/A"))
+                    } else {
+                        prn.agregarTexto("N/A")
+                    }
+
+
+                }
+
+                if(orderData.optString("type") == "Retiro"){
+                    prn.LineasIgual()
+                    prn.alineadoIzquierda()
+                    prn.agregarTexto("Retiro en local")
                 }
                 val line_breaks = printerConfig?.optInt("line_breaks") ?: 0
                 for (j in 0 until line_breaks) {
@@ -1176,10 +1287,9 @@ class PrinterBuilder(private val tipo: String?) {
         } catch (e: JSONException) {
             e.printStackTrace()
         }
-
     }
 
-    suspend fun imprimirPreticket(js: JSONObject?,sj : JSONObject?, copias: Int, caracteres: Int) {
+    suspend fun imprimirPreticket(js: JSONObject?,sj : JSONObject?, caracteres: Int) {
         println("Imprimiendo recibo")
         println(js.toString())
 
@@ -1194,7 +1304,14 @@ class PrinterBuilder(private val tipo: String?) {
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("preticket")
             println("Printer Config: $printerConfig")
 
-            val prn = PrinterHelpers(caracteres, copias)
+            val configCopies: Int = printerConfig?.let { cfg ->
+                when (val v = cfg.opt("copies")) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 1
+                    else -> 1
+                }
+            } ?: 1
+
             val lineSpacing = printerConfig?.optBoolean("line_spacing")
             val logo = printerConfig?.optBoolean("logo")
             //Font selection based on printerConfig
@@ -1203,8 +1320,10 @@ class PrinterBuilder(private val tipo: String?) {
 
 
 
-            for (i in 0 until copias) {
+            for (i in 0 until configCopies) {
                 println("Imprimiendo copia $i")
+                val prn = PrinterHelpers(caracteres, configCopies)
+
                 // imprimir
                 prn.iniciar()
                 when (fontType.uppercase()) {
@@ -1236,7 +1355,7 @@ class PrinterBuilder(private val tipo: String?) {
                 val url = image?.optString("full_path", "")
 
                 if (!url.isNullOrEmpty() && logo == true) {
-                    prn.logo(url, this)
+                    prn.logo(url, this, fontType)
                 } else {
                     println("Image URL is missing or invalid.")
                 }
@@ -1315,8 +1434,10 @@ class PrinterBuilder(private val tipo: String?) {
                 prn.LineaGuionTexto("Teléfono: ")
                 prn.agregarSalto()
                 prn.LineaGuionTexto("Dirección: ")
-                val tip = printerConfig?.optBoolean("tip")
-                if(tip==true){
+                val tip = js.optDouble("tip",0.0)
+                println("Tip: $tip")
+                val tip_field = printerConfig?.optBoolean("tip")
+                if(tip_field==true && tip== 0.0  ){
 
                 prn.agregarSalto()
                 prn.LineaGuionTexto("Propina: ")
@@ -1388,11 +1509,19 @@ class PrinterBuilder(private val tipo: String?) {
                 */
 
 
+                //Add tip value
+                if(tip>0){
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto("Propina:")
+                    prn.agregarCaracteresDerecha(12, df.format(tip))
+                    prn.agregarSalto()
+                }
                 //agregar total
 
-                prn.escribirTextoSinSalto("Total A Pagar: ")
 
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")))
+                prn.escribirTextoSinSalto("Total A Pagar:")
+
+                prn.agregarCaracteresDerecha(12, df.format(js.getDouble("total")))
                 prn.agregarSalto()
                 prn.agregarSalto()
                 prn.alineadoIzquierda()
@@ -1434,7 +1563,7 @@ class PrinterBuilder(private val tipo: String?) {
     }
 
 
-     fun imprimirComandas(js: JSONObject?, sj : JSONObject?, copias: Int, caracteres: Int, printCode: String) {
+     fun imprimirComandas(js: JSONObject?, sj : JSONObject?, caracteres: Int, printCode: String) {
         try {
             if (js == null) return
 
@@ -1444,10 +1573,24 @@ class PrinterBuilder(private val tipo: String?) {
             //var jo: JSONObject
             val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("order")
             println("Printer Config: $printerConfig")
+            
+            val configCopies: Int = printerConfig?.let { cfg ->
+                when (val v = cfg.opt("copies")) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 1
+                    else -> 1
+                }
+            } ?: 1
+            
             // imprimir
-            val prn = PrinterHelpers(caracteres, copias)
-            prn.iniciar()
-            val lineSpacing = printerConfig?.optBoolean("line_spacing")
+
+
+            for (i in 0 until configCopies) {
+                println("Imprimiendo copia $i")
+                val prn = PrinterHelpers(caracteres, configCopies)
+
+                prn.iniciar()
+                val lineSpacing = printerConfig?.optBoolean("line_spacing")
 
 
             if (lineSpacing == true ) {
@@ -1490,8 +1633,8 @@ class PrinterBuilder(private val tipo: String?) {
                 parser.timeZone = TimeZone.getTimeZone("UTC")
                 val date = parser.parse(isoDate)
                 val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
-                formatter.format(date)
-            } catch (e: Exception) {
+                if (date != null) formatter.format(date) else "N/A"
+            } catch (_: Exception) {
                 "N/A"
             }
             val order = orderData.optJSONObject("order")
@@ -1586,8 +1729,11 @@ class PrinterBuilder(private val tipo: String?) {
             }
 
             prn.cortar()
+                println("Comandos")
+                println(prn.getTrabajo())
             enviarImprimir(prn.getTrabajo())
 
+            }
             closeAll()
         } catch (e: JSONException) {
             e.printStackTrace()
@@ -1597,7 +1743,7 @@ class PrinterBuilder(private val tipo: String?) {
 
 
 
-    fun imprimirCierreCaja(js: JSONObject?, sj: JSONObject?, copias: Int, caracteres: Int) {
+    fun imprimirCierreCaja(js: JSONObject?, sj: JSONObject?, caracteres: Int) {
         try {
             if (js == null) return
 
@@ -1612,313 +1758,729 @@ class PrinterBuilder(private val tipo: String?) {
 
             println("Printer Config: $cashRegisterSettings")
 
-            val prn = PrinterHelpers(caracteres, copias)
-            prn.iniciar()
-            prn.setFontA()
-            if (lineSpacing == true ) {
-                println("Setting line spacing applied")
-                prn.lineHeight2()
-            }else {
-                println("Setting default line spacing")
-                prn.lineHeight()
-            }
-
-            prn.alineadoCentro()
-            prn.negritaOn()
-            prn.escribirTexto("Cierre de Caja")
-            prn.negritaOff()
-            prn.agregarSalto()
-
-
-            prn.escribirTexto("Caja #" + js.optString("sequential"))
-            prn.escribirTexto("Usuario: " + js.getJSONObject("user").optString("name"))
-
-            val sub = js.getJSONObject("subsidiary")
-            prn.escribirTexto(
-                "Sucursal: " + sub.optString("commercial_name") +
-                        " " + sub.optString("code") +
-                        " · PV: " + js.optJSONObject("checkout")?.optString("name","-")
-            )
-
-            prn.escribirTexto("Apertura: " + js.optString("opened_at"))
-            prn.escribirTexto("Cierre: " + js.optString("closed_at", "-"))
-
-            val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-            prn.escribirTexto("Impreso: $currentDateTime")
-            prn.agregarSalto()
-            prn.alineadoIzquierda()
-            // ===========================
-            // RESUMEN EFECTIVO — PARTE 1
-            // ===========================
-            prn.LineasGuion()
-
-            prn.escribirTextoSinSalto("Efectivo esperado")
-            prn.agregarCaracteresDerecha(caracteres - 17, "$" + df.format(totals.getDouble("expected_cash")))
-            prn.agregarSalto()
-
-            prn.escribirTextoSinSalto("Efectivo contado")
-            prn.agregarCaracteresDerecha(caracteres - 16, "$" + df.format(totals.getDouble("received_cash")))
-            prn.agregarSalto()
-
-            val difference = totals.getDouble("difference")
-            val diffAbs = kotlin.math.abs(difference)
-            val diffSuf = if (difference < 0) "S" else "F"
-
-            prn.escribirTextoSinSalto("Diferencia")
-            prn.agregarCaracteresDerecha(caracteres - 10, df.format(diffAbs) + " " + diffSuf)
-            prn.agregarSalto()
-
-            // ===========================
-            // RESUMEN EFECTIVO — PARTE 2
-            // ===========================
-            prn.LineasGuion()
-            prn.negritaOn()
-            prn.alineadoCentro()
-            prn.escribirTexto("-- Resumen de Efectivo --")
-            prn.alineadoIzquierda()
-            prn.negritaOff()
-
-
-            prn.escribirTextoSinSalto("Apertura")
-            prn.agregarCaracteresDerecha(caracteres - 8, "$" + df.format(totals.getDouble("opening")))
-            prn.agregarSalto()
-
-            prn.escribirTextoSinSalto("Ventas en efectivo")
-            prn.agregarCaracteresDerecha(caracteres - 18, "$" + df.format(totals.getDouble("sales_cash")))
-            prn.agregarSalto()
-
-            prn.escribirTextoSinSalto("+ Ingresos")
-            prn.agregarCaracteresDerecha(caracteres - 10, "+" + df.format(totals.getDouble("revenue")))
-            prn.agregarSalto()
-
-            prn.escribirTextoSinSalto("- Egresos")
-            prn.agregarCaracteresDerecha(caracteres - 9, "-" + df.format(totals.getDouble("expenses")))
-            prn.agregarSalto()
-
-            prn.negritaOn()
-            prn.escribirTextoSinSalto("Total esperado")
-            prn.agregarCaracteresDerecha(caracteres - 14, "$" + df.format(totals.getDouble("expected_cash")))
-            prn.negritaOff()
-            prn.agregarSalto()
-
-            // ===========================
-            // VENTAS
-            // ===========================
-            prn.LineasGuion()
-            prn.negritaOn()
-            prn.alineadoCentro()
-            prn.escribirTexto("-- Ventas --")
-            prn.alineadoIzquierda()
-            prn.negritaOff()
-
-            val totalsHour = salesByHour.optJSONObject("totals")
-
-            prn.escribirTextoSinSalto("# Válidas")
-            prn.agregarCaracteresDerecha(caracteres - 9, "" + df.format(totalsHour.optJSONObject("valid")?.optInt("count", 0)))
-
-            prn.escribirTextoSinSalto("# Anuladas")
-            prn.agregarCaracteresDerecha(caracteres - 10, "" + df.format(totalsHour.optJSONObject("canceled")?.optInt("count", 0)))
-
-            prn.escribirTextoSinSalto("Total válidas")
-            prn.agregarCaracteresDerecha(caracteres - 13, "" + df.format(totals.getDouble("sales_total_valid")))
-
-
-            prn.agregarSalto()
-
-            // ===========================
-            // INGRESOS POR FORMA DE PAGO
-            // ===========================
-            if (cashRegisterSettings?.optBoolean("payment_methods", false) == true) {
-                prn.LineasGuion()
-                prn.negritaOn()
-                prn.alineadoCentro()
-                prn.escribirTexto("-- Ingresos por forma de pago --")
-                prn.alineadoIzquierda()
-                prn.negritaOff()
-
-                if (paymentMethods != null) {
-                    for (i in 0 until paymentMethods.length()) {
-                        val pm = paymentMethods.getJSONObject(i)
-                        val name = pm.optString("name")
-                        val amt = pm.optJSONObject("valid").optDouble("amount")
-
-                        prn.escribirTextoSinSalto(name)
-                        prn.agregarCaracteresDerecha(caracteres - name.length, "$" + df.format(amt))
-                        prn.agregarSalto()
-                    }
+            val configCopies: Int = cashRegisterSettings?.let { cfg ->
+                when (val v = cfg.opt("copies")) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 1
+                    else -> 1
                 }
-            }
-
-            // ===========================
-            // PROPINAS
-            // ===========================
-            if (cashRegisterSettings?.optBoolean("tip", false) == true) {
-                prn.LineasGuion()
-                prn.negritaOn()
-                prn.alineadoCentro()
-                prn.escribirTexto("-- Propinas --")
-                prn.alineadoIzquierda()
-                prn.negritaOff()
-
-                val tip = totals.optDouble("additional_tip_total", 0.0)
-
-                prn.escribirTextoSinSalto("Propinas adicionales")
-                prn.agregarCaracteresDerecha(caracteres - 20, "" + df.format(tip))
-            }
+            } ?: 1
 
 
-            // ===========================
-            // TOP PRODUCTOS
-            // ===========================
-            if (cashRegisterSettings?.optBoolean("sales_by_product", false) == true) {
-                prn.LineasGuion()
-                prn.negritaOn()
-                prn.alineadoCentro()
-                prn.escribirTexto("-- Top productos --")
-                prn.alineadoIzquierda()
-                prn.negritaOff()
+            for (i in 0 until configCopies) {
+                val prn = PrinterHelpers(caracteres, configCopies)
+                prn.iniciar()
 
-                if (salesByProduct != null && salesByProduct.length() > 0) {
-                    for (i in 0 until salesByProduct.length()) {
-                        val p = salesByProduct.getJSONObject(i)
-
-                        prn.escribirTextoSinSalto(p.optString("product_name"))
-                        val productLength = p.optString("product_name").length
-                        prn.agregarCaracteresDerecha(caracteres - productLength, "" + p.optInt("total_quantity"))
-
-                        prn.negritaOn()
-                        prn.lineHeight()
-                        prn.LineasGuion()
-                        prn.negritaOff()
-                        prn.lineHeight2()
-                        prn.escribirTextoSinSalto("     Importe")
-
-                        prn.agregarCaracteresDerecha(caracteres - 12, "" + df.format(p.optDouble("total_sold_with_taxes")))
-                        prn.agregarSalto()
-                    }
-                }else{
-                    prn.agregarSalto()
-                    prn.escribirTextoSinSalto("No hay productos vendidos")
-                    prn.agregarSalto()
-                }
-            }
-
-            // ===========================
-            // HORA PICO
-            // ===========================
-            if (cashRegisterSettings?.optBoolean("sales_resume", false) == true) {
-                prn.LineasGuion()
-                prn.negritaOn()
-                prn.alineadoCentro()
-                prn.escribirTexto("-- Hora pico --")
-                prn.alineadoIzquierda()
-                prn.negritaOff()
-
-                val buckets = salesByHour.optJSONArray("buckets")
-                if (buckets != null && buckets.length() > 0) {
-                    for (i in 0 until buckets.length()) {
-                        val b = buckets.getJSONObject(i)
-                        prn.escribirTexto(
-                            b.getString("hour") + ":00 $" +
-                                    df.format(b.optDouble("valid_amount"))
-                        )
-
-                        prn.escribirTextoSinSalto(b.getString("hour") + ":00")
-
-                        prn.agregarCaracteresDerecha(caracteres - 5, "" + df.format(b.optDouble("valid_amount")))
-                    }
-                } else {
-                    prn.agregarSalto()
-                    prn.escribirTexto("No hay datos disponibles")
-                    prn.agregarSalto()
-                }
-            }
-
-            // ===========================
-            // MOVIMIENTOS DE CAJA
-            // ===========================
-            if (cashRegisterSettings?.optBoolean("movements", false) == true) {
-                prn.LineasGuion()
-                prn.negritaOn()
-                prn.alineadoCentro()
-                prn.escribirTexto("-- Movimientos de caja --")
-                prn.alineadoIzquierda()
-                prn.negritaOff()
-
-                if (movements != null && movements.length() > 0) {
-                    for (i in 0 until movements.length()) {
-                        val m = movements.getJSONObject(i)
-                        val concept = m.optString("concept")
-
-                        val amount =  df.format(m.optDouble("total"))
-                        val maxConceptWidth = 30 // Set maximum width for concept text
-                        val truncatedConcept = if (concept.length > maxConceptWidth) {
-                            concept.substring(0, maxConceptWidth)
-                        } else {
-                            concept
-                        }
-                        prn.escribirTextoSinSalto(truncatedConcept)
-                        val conceptLength = truncatedConcept.length
-                        prn.agregarCaracteresDerecha(caracteres - conceptLength,  ""+amount)
-                        prn.agregarSalto()
-                    }
-                }else {
-                    prn.agregarSalto()
-                    prn.escribirTexto("No hay movimientos de caja")
-                    prn.agregarSalto()
-                }
-            }
-
-            // ===========================
-            // OBSERVACIÓN (si existe)
-            // ===========================
-            prn.alineadoCentro()
-            if (js.has("observation")) {
-                prn.LineasGuion()
-
-                prn.escribirTexto("Obs: " + js.optString("observation"))
-
-            }
-
-            // ===========================
-            // CIERRE FINAL
-            // ===========================
-
-
-            prn.LineasGuion()
-            prn.agregarSalto()
-            val cierreTxt = if (difference < 0)
-                "Cierre con sobrante de $" + df.format(diffAbs)
-            else
-                "Cierre con faltante de $" + df.format(diffAbs)
-
-            prn.escribirTexto(cierreTxt)
-            prn.agregarSalto()
-            prn.agregarSalto()
-            prn.escribirTexto("------------------------")
-            prn.escribirTexto("Firma")
-            prn.agregarSalto()
-            prn.escribirTexto("¡Gracias!")
-
-            val line_breaks = cashRegisterSettings?.optInt("line_breaks") ?: 0
-            for (i in 0 until line_breaks) {
-                prn.agregarSalto()
-            }
-
-            if(tipo == PrinterType.BLUETOOTH.type) {
-                prn.feed(6)
-            }else {
+                prn.setFontA()
                 if (lineSpacing == true ) {
                     println("Setting line spacing applied")
-                    prn.feed(7)
+                    prn.lineHeight2()
                 }else {
                     println("Setting default line spacing")
-
-                    prn.feed(14)
+                    prn.lineHeight()
                 }
+
+                prn.alineadoCentro()
+                prn.negritaOn()
+                prn.escribirTexto("Cierre de Caja")
+                prn.negritaOff()
+                prn.agregarSalto()
+
+
+                prn.escribirTexto("Caja #" + js.optString("sequential"))
+                prn.escribirTexto("Usuario: " + js.getJSONObject("user").optString("name"))
+
+                val sub = js.getJSONObject("subsidiary")
+                prn.escribirTexto(
+                    "Sucursal: " + sub.optString("commercial_name") +
+                            " " + sub.optString("code") +
+                            " · PV: " + js.optJSONObject("checkout")?.optString("name","-")
+                )
+
+                prn.escribirTexto("Apertura: " + js.optString("opened_at"))
+                prn.escribirTexto("Cierre: " + js.optString("closed_at", "-"))
+
+                val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                prn.escribirTexto("Impreso: $currentDateTime")
+                prn.agregarSalto()
+                prn.alineadoIzquierda()
+                // ===========================
+                // RESUMEN EFECTIVO — PARTE 1
+                // ===========================
+                prn.LineasGuion()
+
+                prn.escribirTextoSinSalto("Efectivo esperado")
+                prn.agregarCaracteresDerecha(caracteres - 17, "$" + df.format(totals.getDouble("expected_cash")))
+                prn.agregarSalto()
+
+                prn.escribirTextoSinSalto("Efectivo contado")
+                prn.agregarCaracteresDerecha(caracteres - 16, "$" + df.format(totals.getDouble("received_cash")))
+                prn.agregarSalto()
+
+                val difference = totals.getDouble("difference")
+                val diffAbs = kotlin.math.abs(difference)
+                val diffSuf = if (difference < 0) "S" else "F"
+
+                prn.escribirTextoSinSalto("Diferencia")
+                prn.agregarCaracteresDerecha(caracteres - 10, df.format(diffAbs) + " " + diffSuf)
+                prn.agregarSalto()
+
+                // ===========================
+                // RESUMEN EFECTIVO — PARTE 2
+                // ===========================
+                prn.LineasGuion()
+                prn.negritaOn()
+                prn.alineadoCentro()
+                prn.escribirTexto("-- Resumen de Efectivo --")
+                prn.alineadoIzquierda()
+                prn.negritaOff()
+
+
+                prn.escribirTextoSinSalto("Apertura")
+                prn.agregarCaracteresDerecha(caracteres - 8, "$" + df.format(totals.getDouble("opening")))
+                prn.agregarSalto()
+
+                prn.escribirTextoSinSalto("Ventas en efectivo")
+                prn.agregarCaracteresDerecha(caracteres - 18, "$" + df.format(totals.getDouble("sales_cash")))
+                prn.agregarSalto()
+
+                prn.escribirTextoSinSalto("+ Ingresos")
+                prn.agregarCaracteresDerecha(caracteres - 10, "+" + df.format(totals.getDouble("revenue")))
+                prn.agregarSalto()
+
+                prn.escribirTextoSinSalto("- Egresos")
+                prn.agregarCaracteresDerecha(caracteres - 9, "-" + df.format(totals.getDouble("expenses")))
+                prn.agregarSalto()
+
+                prn.negritaOn()
+                prn.escribirTextoSinSalto("Total esperado")
+                prn.agregarCaracteresDerecha(caracteres - 14, "$" + df.format(totals.getDouble("expected_cash")))
+                prn.negritaOff()
+                prn.agregarSalto()
+
+                // ===========================
+                // VENTAS
+                // ===========================
+                prn.LineasGuion()
+                prn.negritaOn()
+                prn.alineadoCentro()
+                prn.escribirTexto("-- Ventas --")
+                prn.alineadoIzquierda()
+                prn.negritaOff()
+
+                val totalsHour = salesByHour.optJSONObject("totals")
+
+                prn.escribirTextoSinSalto("# Válidas")
+                prn.agregarCaracteresDerecha(caracteres - 9, "" + df.format(totalsHour.optJSONObject("valid")?.optInt("count", 0)))
+
+                prn.escribirTextoSinSalto("# Anuladas")
+                prn.agregarCaracteresDerecha(caracteres - 10, "" + df.format(totalsHour.optJSONObject("canceled")?.optInt("count", 0)))
+
+                prn.escribirTextoSinSalto("Total válidas")
+                prn.agregarCaracteresDerecha(caracteres - 13, "" + df.format(totals.getDouble("sales_total_valid")))
+
+
+                prn.agregarSalto()
+
+                // ===========================
+                // INGRESOS POR FORMA DE PAGO
+                // ===========================
+                if (cashRegisterSettings?.optBoolean("payment_methods", false) == true) {
+                    prn.LineasGuion()
+                    prn.negritaOn()
+                    prn.alineadoCentro()
+                    prn.escribirTexto("-- Ingresos por forma de pago --")
+                    prn.alineadoIzquierda()
+                    prn.negritaOff()
+
+                    if (paymentMethods != null) {
+                        for (i in 0 until paymentMethods.length()) {
+                            val pm = paymentMethods.getJSONObject(i)
+                            val name = pm.optString("name")
+                            val amt = pm.optJSONObject("valid").optDouble("amount")
+
+                            prn.escribirTextoSinSalto(name)
+                            prn.agregarCaracteresDerecha(caracteres - name.length, "$" + df.format(amt))
+                            prn.agregarSalto()
+                        }
+                    }
+                }
+
+                // ===========================
+                // PROPINAS
+                // ===========================
+                if (cashRegisterSettings?.optBoolean("tip", false) == true) {
+                    prn.LineasGuion()
+                    prn.negritaOn()
+                    prn.alineadoCentro()
+                    prn.escribirTexto("-- Propinas --")
+                    prn.alineadoIzquierda()
+                    prn.negritaOff()
+
+                    val tip = totals.optDouble("additional_tip_total", 0.0)
+
+                    prn.escribirTextoSinSalto("Propinas adicionales")
+                    prn.agregarCaracteresDerecha(caracteres - 20, "" + df.format(tip))
+                }
+
+
+                // ===========================
+                // TOP PRODUCTOS
+                // ===========================
+                if (cashRegisterSettings?.optBoolean("sales_by_product", false) == true) {
+                    prn.LineasGuion()
+                    prn.negritaOn()
+                    prn.alineadoCentro()
+                    prn.escribirTexto("-- Top productos --")
+                    prn.alineadoIzquierda()
+                    prn.negritaOff()
+
+                    if (salesByProduct != null && salesByProduct.length() > 0) {
+                        for (i in 0 until salesByProduct.length()) {
+                            val p = salesByProduct.getJSONObject(i)
+
+                            prn.escribirTextoSinSalto(p.optString("product_name"))
+                            val productLength = p.optString("product_name").length
+                            prn.agregarCaracteresDerecha(caracteres - productLength, "" + p.optInt("total_quantity"))
+
+                            prn.negritaOn()
+                            prn.lineHeight()
+                            prn.LineasGuion()
+                            prn.negritaOff()
+                            prn.lineHeight2()
+                            prn.escribirTextoSinSalto("     Importe")
+
+                            prn.agregarCaracteresDerecha(caracteres - 12, "" + df.format(p.optDouble("total_sold_with_taxes")))
+                            prn.agregarSalto()
+                        }
+                    }else{
+                        prn.agregarSalto()
+                        prn.escribirTextoSinSalto("No hay productos vendidos")
+                        prn.agregarSalto()
+                    }
+                }
+
+                // ===========================
+                // HORA PICO
+                // ===========================
+                if (cashRegisterSettings?.optBoolean("sales_resume", false) == true) {
+                    prn.LineasGuion()
+                    prn.negritaOn()
+                    prn.alineadoCentro()
+                    prn.escribirTexto("-- Hora pico --")
+                    prn.alineadoIzquierda()
+                    prn.negritaOff()
+
+                    val buckets = salesByHour.optJSONArray("buckets")
+                    if (buckets != null && buckets.length() > 0) {
+                        for(j in 0 until buckets.length()){
+                            val bucket = buckets.getJSONObject(j)
+                            val hour = bucket.optString("hour", "N/A")
+                            val money = "$" + df.format(bucket.optDouble("total", 0.0))
+
+                            prn.escribirTextoSinSalto(hour)
+                            val space = (caracteres - hour.length - money.length).coerceAtLeast(0)
+                            prn.agregarCaracteres(space, "")
+                            prn.escribirTextoSinSalto(money)
+                            prn.agregarSalto()
+                        }
+                    } else {
+                        prn.agregarSalto()
+                        prn.escribirTexto("No hay datos disponibles")
+                        prn.agregarSalto()
+                    }
+                }
+
+                // ===========================
+                // MOVIMIENTOS DE CAJA
+                // ===========================
+                if (cashRegisterSettings?.optBoolean("movements", false) == true) {
+                    prn.LineasGuion()
+                    prn.negritaOn()
+                    prn.alineadoCentro()
+                    prn.escribirTexto("-- Movimientos de caja --")
+                    prn.alineadoIzquierda()
+                    prn.negritaOff()
+
+                    if (movements != null && movements.length() > 0) {
+                        for(j in 0 until movements.length()){
+                            val mov = movements.getJSONObject(j)
+                            val type = if(mov.optString("type") == "expense") "(-)" else "(+)"
+                            var desc = mov.optString("description", "N/A")
+                            val amount = df.format(mov.optDouble("amount", 0.0)) + type
+
+                            // Calculated space
+                            val maxDescLen = (caracteres - amount.length - 2).coerceAtLeast(1)
+                            if(desc.length > maxDescLen) {
+                                desc = desc.substring(0, maxDescLen)
+                            }
+
+                            prn.escribirTextoSinSalto(desc)
+                            val space = (caracteres - desc.length - amount.length).coerceAtLeast(0)
+                            prn.agregarCaracteres(space, "")
+                            prn.escribirTextoSinSalto(amount)
+                            prn.agregarSalto()
+                        }
+                    }else {
+                        prn.agregarSalto()
+                        prn.escribirTexto("No hay movimientos de caja")
+                        prn.agregarSalto()
+                    }
+                }
+
+                // ===========================
+                // OBSERVACIÓN (si existe)
+                // ===========================
+                prn.alineadoCentro()
+                if (js.has("observation")) {
+                    prn.LineasGuion()
+
+                    prn.escribirTexto("Obs: " + js.optString("observation"))
+
+                }
+
+                // ===========================
+                // CIERRE FINAL
+                // ===========================
+
+
+                prn.LineasGuion()
+                prn.agregarSalto()
+                val cierreTxt = if (difference < 0)
+                    "Cierre con sobrante de $" + df.format(diffAbs)
+                else
+                    "Cierre con faltante de $" + df.format(diffAbs)
+
+                prn.escribirTexto(cierreTxt)
+                prn.agregarSalto()
+                prn.agregarSalto()
+                prn.escribirTexto("------------------------")
+                prn.escribirTexto("Firma")
+                prn.agregarSalto()
+                prn.escribirTexto("¡Gracias!")
+
+                val line_breaks = cashRegisterSettings?.optInt("line_breaks") ?: 0
+                for (i in 0 until line_breaks) {
+                    prn.agregarSalto()
+                }
+
+                if(tipo == PrinterType.BLUETOOTH.type) {
+                    prn.feed(6)
+                }else {
+                    if (lineSpacing == true ) {
+                        println("Setting line spacing applied")
+                        prn.feed(7)
+                    }else {
+                        println("Setting default line spacing")
+
+                        prn.feed(14)
+                    }
+                }
+                prn.cortar()
+                enviarImprimir(prn.getTrabajo())
+
+            } // loop close
+
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        }
+    }
+
+
+    /**
+     * Imprime comprobante de cobro/abono de cuenta por cobrar
+     * @param js JSONObject con los datos del PaymentAccount
+     * @param sj JSONObject con la configuración del sistema (settings)
+     * @param caracteres Ancho de impresión en caracteres
+     */
+    suspend fun imprimirAbonoCuenta(js: JSONObject?, sj: JSONObject?, caracteres: Int) {
+        println("Imprimiendo comprobante de abono/cobro")
+        println(js.toString())
+        try {
+            if (js == null) return
+
+            val printerConfig = sj?.getJSONObject("printers")?.optJSONObject("paymentAccounts")
+            println("Printer Config: $printerConfig")
+
+            val configCopies: Int = printerConfig?.let { cfg ->
+                when (val v = cfg.opt("copies")) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 1
+                    else -> 1
+                }
+            } ?: 1
+
+            println("Copias configuradas $configCopies")
+
+            for (i in 0 until configCopies) {
+                println("Imprimiendo copia $i")
+
+                val prn = PrinterHelpers(caracteres, configCopies)
+                prn.iniciar()
+                prn.dobleAltoOn()
+
+                val lineSpacing = printerConfig?.optBoolean("line_spacing",true)
+                val logo = printerConfig?.optBoolean("logo")
+
+                if (lineSpacing == true) {
+                    println("Setting line spacing applied")
+                    prn.lineHeight2()
+                } else {
+                    println("Setting default line spacing")
+                    prn.lineHeight()
+                }
+
+                prn.alineadoCentro()
+
+                // Font selection based on printerConfig
+                val fontType = printerConfig?.optString("font") ?: "B"
+                println("Font Type: $fontType")
+
+                // Validate if the "image" key exists for logo
+                val subsidiary = sj?.optJSONObject("subsidiary")
+                val image = subsidiary?.optJSONObject("image")
+                val url = image?.optString("full_path", "")
+
+                if (!url.isNullOrEmpty() && logo == true) {
+                    prn.logo(url, this, fontType)
+                } else {
+                    println("Image URL is missing or invalid.")
+                }
+
+                when (fontType.uppercase()) {
+                    "A" -> prn.setFontA()
+                    "B" -> prn.setFontB()
+                    "AA" -> prn.setFontAA()
+                    "BB" -> prn.setFontBB()
+                }
+
+                // ===========================
+                // ENCABEZADO EMPRESA
+                // ===========================
+                if (sj != null) {
+                    if (sj.optString("business_name") != "null") {
+                        prn.escribirTextoSinSalto(sj.optString("business_name"))
+                        prn.agregarSalto()
+                    }
+                    prn.escribirTextoSinSalto("RUC: " + sj.optString("ruc"))
+                    prn.agregarSalto()
+                    prn.escribirTextoSinSalto(sj.optString("address"))
+                    prn.agregarSalto()
+                    if (sj.optString("phone") != "null") {
+                        prn.escribirTextoSinSalto("Tel: " + sj.optString("phone"))
+                        prn.agregarSalto()
+                    }
+                }
+
+                prn.agregarSalto()
+
+                // ===========================
+                // TÍTULO DEL COMPROBANTE
+                // ===========================
+                prn.negritaOn()
+                prn.escribirTexto("COMPROBANTE DE COBRO / ABONO")
+                prn.negritaOff()
+                prn.LineasIgual()
+
+                // ===========================
+                // DATOS DEL COMPROBANTE
+                // ===========================
+                prn.alineadoIzquierda()
+
+                // Número secuencial del abono
+                val sequential = js.optString("sequential", "")
+                val number = js.optString("number", "")
+                //Numero
+                prn.escribirTextoSinSalto("Nº: ")
+                prn.escribirTextoSinSalto(number)
+                prn.agregarSalto()
+
+                // Secuencial
+                prn.escribirTextoSinSalto("Sec: ")
+                prn.escribirTextoSinSalto(sequential)
+                prn.agregarSalto()
+
+                // Referencia
+                val reference = js.optString("reference", "")
+                prn.escribirTextoSinSalto("Ref: ")
+                prn.escribirTextoSinSalto(reference)
+                prn.agregarSalto()
+
+                // Fecha del último pago o fecha actual
+                val payments = js.optJSONArray("payment_account_details")
+//                val lastPaymentDate = if (payments != null && payments.length() > 0) {
+//                    payments.getJSONObject(payments.length() - 1).optString("date", "")
+//                } else {
+//                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+//                }
+//                prn.escribirTextoSinSalto("Fecha: ")
+//                prn.escribirTextoSinSalto(lastPaymentDate)
+//                prn.agregarSalto()
+
+                prn.LineasGuion()
+
+                // ===========================
+                // DATOS DEL CLIENTE
+                // ===========================
+                prn.alineadoCentro()
+                prn.negritaOn()
+                prn.escribirTexto("CLIENTE")
+                prn.negritaOff()
+                prn.alineadoIzquierda()
+
+                val person = js.optJSONObject("person")
+                val customerName = person?.optString("name", "N/A") ?: "N/A"
+                val customerIdentity = person?.optString("identity", "N/A") ?: "N/A"
+
+                prn.escribirTextoSinSalto("Nombre: ")
+                prn.escribirTextoSinSalto(customerName)
+                prn.agregarSalto()
+
+                prn.escribirTextoSinSalto("Ced/RUC: ")
+                prn.escribirTextoSinSalto(customerIdentity)
+                prn.agregarSalto()
+
+                prn.LineasGuion()
+
+                // ===========================
+                // DOCUMENTO RELACIONADO
+                // ===========================
+                prn.alineadoCentro()
+                prn.negritaOn()
+                prn.escribirTexto("DOCUMENTO RELACIONADO")
+                prn.negritaOff()
+                prn.alineadoIzquierda()
+
+                val paymentAccountable = js.optJSONObject("payment_accountable")
+                if (paymentAccountable != null) {
+                    val docNumber = paymentAccountable.optString("number", "N/A")
+                    val docDate = paymentAccountable.optString("date", "N/A")
+                    val docTotal = paymentAccountable.optDouble("total", 0.0)
+
+                    prn.escribirTextoSinSalto("Numero: ")
+                    prn.escribirTextoSinSalto(docNumber)
+                    prn.agregarSalto()
+
+                    prn.escribirTextoSinSalto("Fecha:  ")
+                    prn.escribirTextoSinSalto(docDate)
+                    prn.agregarSalto()
+
+                    prn.escribirTextoSinSalto("Total:  ")
+                    prn.escribirTextoSinSalto("$" + df.format(docTotal))
+                    prn.agregarSalto()
+                }
+
+
+
+                prn.LineasIgual()
+
+                // ===========================
+                // DETALLE DE PAGOS (si hay)
+                // ===========================
+                if (payments != null && payments.length() > 0) {
+                    prn.alineadoCentro()
+                    prn.negritaOn()
+                    prn.escribirTexto("DETALLE DE PAGOS")
+                    prn.negritaOff()
+                    prn.alineadoIzquierda()
+
+                    // Find the most recent payment
+                    var mostRecentPayment: JSONObject? = null
+                    var mostRecentTimestamp = Long.MIN_VALUE
+                    
+                    for (j in 0 until payments.length()) {
+                        val payment = payments.getJSONObject(j)
+                        val rawPaymentDate = payment.optString("created_at", "")
+                        val timestamp = try {
+                            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault())
+                            inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                            inputFormat.parse(rawPaymentDate)?.time ?: 0L
+                        } catch (e: Exception) {
+                            0L
+                        }
+                        
+                        if (timestamp > mostRecentTimestamp) {
+                            mostRecentTimestamp = timestamp
+                            mostRecentPayment = payment
+                        }
+                    }
+                    
+                    // Only print payments within 1 millisecond of the most recent
+                    if (mostRecentPayment != null) {
+                        for (j in 0 until payments.length()) {
+                            val payment = payments.getJSONObject(j)
+                            val rawPaymentDate = payment.optString("created_at", "")
+                            val timestamp = try {
+                                val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault())
+                                inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                                inputFormat.parse(rawPaymentDate)?.time ?: 0L
+                            } catch (e: Exception) {
+                                0L
+                            }
+                            
+                            if (kotlin.math.abs(timestamp - mostRecentTimestamp) <= 1) {
+                                val paymentDate = try {
+                                    val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault())
+                                    inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                                    val date = inputFormat.parse(rawPaymentDate)
+                                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date!!)
+                                } catch (e: Exception) {
+                                    rawPaymentDate
+                                }
+                                val paymentTime = try {
+                                    val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault())
+                                    inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                                    val date = inputFormat.parse(rawPaymentDate)
+                                    SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(date!!)
+                                } catch (e: Exception) {
+                                    ""
+                                }
+                                val paymentAmount = payment.optString("amount", "0")
+                                val previousAmount = payment.optString("account_amount", "0")
+                                val newAmount = payment.optString("new_amount", "0")
+                                val paymentAmountDouble = paymentAmount.toDoubleOrNull() ?: 0.0
+                                
+                                val paymentable = payment.optJSONObject("paymentable")
+                                val paymentMethod = paymentable?.optString("payment_method_name", "N/A") ?: "N/A"
+                                val amountStr = "$" + df.format(paymentAmountDouble)
+
+                                prn.escribirTextoSinSalto(paymentDate)
+                                if (paymentTime.isNotEmpty()) {
+                                    prn.agregarCaracteresDerecha((caracteres - paymentDate.length).coerceAtLeast(0), paymentTime)
+                                }
+                                prn.agregarSalto()
+                                
+                                prn.escribirTextoSinSalto(paymentMethod)
+                                prn.agregarSalto()
+                                
+                                prn.escribirTextoSinSalto("Saldo anterior: ")
+                                prn.agregarCaracteresDerecha((caracteres - 16).coerceAtLeast(0), "$" + df.format(previousAmount.toDoubleOrNull() ?: 0.0))
+                                prn.agregarSalto()
+                                
+                                prn.escribirTextoSinSalto("Pago: ")
+                                prn.agregarCaracteresDerecha((caracteres - 6).coerceAtLeast(0), amountStr)
+                                prn.agregarSalto()
+                                
+                                prn.escribirTextoSinSalto("Nuevo saldo: ")
+                                prn.agregarCaracteresDerecha((caracteres - 13).coerceAtLeast(0), "$" + df.format(newAmount.toDoubleOrNull() ?: 0.0))
+                                prn.agregarSalto()
+
+                                if (j < payments.length() - 1) {
+                                    prn.LineasGuion()
+                                }
+                            }
+                        }
+                    }
+                    prn.LineasIgual()
+
+                }
+
+    
+
+                // ===========================
+                // RESUMEN DE CUENTA
+                // ===========================
+                prn.alineadoCentro()
+                prn.negritaOn()
+                prn.escribirTexto("RESUMEN DE CUENTA")
+                prn.negritaOff()
+                prn.alineadoIzquierda()
+
+                // Monto original (amount)
+                val originalAmount = js.optDouble("amount", 0.0)
+                val originalAmountValue = if (originalAmount > 1000) originalAmount / 100.0 else originalAmount
+
+                // Monto abonado acumulado (payed_amount)
+                val payedAmount = js.optDouble("payed_amount", 0.0)
+                val payedAmountValue = if (payedAmount > 1000) payedAmount / 100.0 else payedAmount
+
+
+
+                val labelWidth = 18 // "Monto original:" length
+
+                prn.escribirTextoSinSalto("Monto original :")
+                prn.agregarCaracteresDerecha(caracteres - 16, "$" + df.format(originalAmountValue))
+                prn.agregarSalto()
+
+                prn.escribirTextoSinSalto("Abonado acum.  :")
+                prn.agregarCaracteresDerecha(caracteres - 16, "$" + df.format(payedAmountValue))
+                prn.agregarSalto()
+
+                                // Saldo pendiente (balance)
+                val balance = js.optDouble("balance", 0.0)
+                val balanceValue = if (balance > 1000) balance / 100.0 else balance
+                prn.negritaOn()
+                prn.escribirTextoSinSalto("Saldo pendiente:")
+                prn.agregarCaracteresDerecha(caracteres - 16, "$" + df.format(balanceValue))
+                prn.negritaOff()
+                prn.agregarSalto()
+                prn.LineasGuion()
+                // ===========================
+                // OBSERVACIÓN (si existe)
+                // ===========================
+                val observation = js.optString("observation", "")
+                if (observation.isNotEmpty() && observation != "null") {
+                    prn.alineadoIzquierda()
+                    prn.escribirTextoSinSalto("Obs: ")
+                    prn.escribirTextoSinSalto(observation)
+                    prn.agregarSalto()
+                    prn.agregarSalto()
+                }
+
+                // ===========================
+                // PIE DE PÁGINA
+                // ===========================
+
+
+                // Usuario que imprime
+                val user = AppStorage.getUserData(context)
+                val userName = user?.name
+                if (userName?.isNotEmpty() == true) {
+                    prn.escribirTextoSinSalto("Usuario: ")
+                    prn.escribirTextoSinSalto(userName)
+                    prn.agregarSalto()
+                }
+
+                // Fecha y hora de impresión
+                val currentDateTime = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+                prn.escribirTextoSinSalto("Impreso: ")
+                prn.escribirTextoSinSalto(currentDateTime)
+                prn.agregarSalto()
+
+                prn.alineadoCentro()
+                prn.agregarSalto()
+                prn.negritaOn()
+                prn.escribirTexto("*** Gracias por su pago ***")
+                prn.negritaOff()
+                prn.agregarSalto()
+                prn.agregarSalto()
+                // ===========================
+                // SALTOS Y CORTE
+                // ===========================
+                val lineBreaks = printerConfig?.optInt("line_breaks") ?: 0
+                for (j in 0 until lineBreaks) {
+                    prn.agregarSalto()
+                }
+
+                if (tipo == PrinterType.BLUETOOTH.type) {
+                    prn.feed(6)
+                } else {
+                    if (lineSpacing == true) {
+                        println("Setting line spacing applied")
+                        prn.feed(7)
+                    } else {
+                        println("Setting default line spacing")
+                        prn.feed(14)
+                    }
+                }
+
+                prn.cortar()
+
+                println("Comandos")
+                println(prn.getTrabajo())
+                enviarImprimir(prn.getTrabajo())
             }
-            prn.cortar()
-            enviarImprimir(prn.getTrabajo())
+            closeAll()
 
         } catch (e: JSONException) {
             e.printStackTrace()
@@ -1954,7 +2516,7 @@ class PrinterBuilder(private val tipo: String?) {
                         val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
                         escposCoffee.printMessage(trabajo)
 
-                        Thread.sleep(2000)
+                        Thread.sleep(4000)
                         this.streamBluetooth?.flush()
                         success = true
                     } else {
@@ -1989,30 +2551,26 @@ class PrinterBuilder(private val tipo: String?) {
                     errorMessage = error
                 )
             )
-            PrintDiagnosticsBus.appendPersistentLog(
-                context = try { // attempt to derive a context via reflection if available - skipped if fails
-                    null as Context
-                } catch (_: Exception) { null } ?: return,
-                line = "TRANSPORT ${tipo} addr=${address}:${port} bytes=${trabajo.toByteArray(Charsets.ISO_8859_1).size} ms=${endTs-startTs} success=${success} error=${error ?: ""}".trim()
-            )
         }
     }
 
 
-    suspend fun printMediaJob(mediaBuilder: MediaBuilder) {
+
+
+    suspend fun printMediaJob(mediaBuilder: MediaBuilder, caracteres: Int, fontName: String = "A") {
             try {
                 when (tipo) {
                     PrinterType.WIFI.type -> {
                         TcpIpOutputStream(this.address, this.port!!).use { outputStream ->
                             val style = Style()
-                            val escposCoffee = EscposCoffee(style, outputStream)
+                            val escposCoffee = EscposCoffee(style, outputStream, caracteres, fontName)
                             escposCoffee.printMedia(mediaBuilder)
                         }
                     }
                     PrinterType.BLUETOOTH.type -> {
                         if (this.streamBluetooth != null) {
                             val style = Style()
-                            val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
+                            val escposCoffee = EscposCoffee(style, this.streamBluetooth!!, caracteres, fontName)
                             escposCoffee.printMedia(mediaBuilder)
                             kotlinx.coroutines.delay(2000)
                             this.streamBluetooth?.flush()
@@ -2022,7 +2580,7 @@ class PrinterBuilder(private val tipo: String?) {
                     }
                     else -> {
                         val style = Style()
-                        val escposCoffee = EscposCoffee(style, this.usbOutputStream!!)
+                        val escposCoffee = EscposCoffee(style, this.usbOutputStream!!, caracteres, fontName)
                         escposCoffee.printMedia(mediaBuilder)
                     }
                 }

@@ -58,10 +58,11 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
         escribirTextoSinSalto("\u001B" + "\u0074" + "\u0002")
     }
 
+    //ESC 3 19 (Set to 19 dots)
     fun lineHeight() {
         escribirTextoSinSalto("\u001B" + "\u0033" + "\u0013")
     }
-
+    //ESC 2 (Reset to default ~30 dots)
     fun lineHeight2() {
         escribirTextoSinSalto("\u001B" + "\u0032")
     }
@@ -886,12 +887,12 @@ class PrinterHelpers(var impresoraCaracteres: Int, var impresoraCopias: Int) {
 
 
 
-     suspend fun logo(url: String, printerBuilder: PrinterBuilder) {
+     suspend fun logo(url: String, printerBuilder: PrinterBuilder, fontName: String = "A") {
          println("Printing logo from $url")
         val mediaMap = mapOf("imgU" to listOf(url))
         val mediaBuilder = com.example.printerswanqara.core.print.messageBuilder.MediaBuilder(mediaMap)
         try {
-            printerBuilder.printMediaJob(mediaBuilder)
+            printerBuilder.printMediaJob(mediaBuilder, impresoraCaracteres, fontName)
         } catch (e: Exception) {
             Log.e("PrinterHelpers", "Error printing logo from $url", e)
         }

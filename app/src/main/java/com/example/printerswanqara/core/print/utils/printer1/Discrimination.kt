@@ -31,14 +31,14 @@ class Discrimination(
             android.util.Log.d("Discrimination", "Printer found: ${printer!!.charactersNumber} characters, ${printer!!.copyNumber} copies, type: ${printer!!.type}")
             when (printer!!.type) {
                 PrinterType.WIFI.type -> {
-                    printerBuilder = PrinterBuilder(PrinterType.WIFI.type)
+                    printerBuilder = PrinterBuilder(PrinterType.WIFI.type,context)
                     printerBuilder!!.InicializarImpresoraRed(
                         printer!!.address,
                         printer!!.port!!
                     )
                 }
                 PrinterType.BLUETOOTH.type -> {
-                    printerBuilder = PrinterBuilder(PrinterType.BLUETOOTH.type)
+                    printerBuilder = PrinterBuilder(PrinterType.BLUETOOTH.type,context)
                     printerBuilder!!.InicializarImpresoraBluetooth(printer!!.address!!)
                 }
                 PrinterType.SERVER.type -> {
@@ -47,7 +47,7 @@ class Discrimination(
                     printerBuilder = null 
                 }
                 else -> {
-                    printerBuilder = PrinterBuilder(PrinterType.USB.type)
+                    printerBuilder = PrinterBuilder(PrinterType.USB.type,context)
                     printerBuilder!!.InintUsbPrinter(context)
                 }
             }
@@ -130,6 +130,12 @@ class Discrimination(
                             println("Discrimination: cashRegister = $cashRegister")
                             JSONObject(com.google.gson.Gson().toJson(cashRegister))
                         }
+                        command == "IMPRESION_ABONO_CUENTA" -> {
+                            val paymentAccountService = ApiClient.createPaymentAccountService(context)
+                            val paymentAccount = paymentAccountService.fetchAccount(transactionID).data
+                            println("Discrimination: paymentAccount = $paymentAccount")
+                            JSONObject(com.google.gson.Gson().toJson(paymentAccount))
+                        }
                         else -> { // Default to sales for other commands (e.g., IMPRESION_FACTURA_ELECTRONICA, IMPRESION_RECIBO)
                             println("Discrimination: Fetching sale for ID $transactionID")
                             val salesService = ApiClient.createSalesService(context)
@@ -164,7 +170,6 @@ class Discrimination(
                             printerBuilder!!.imprimirFacturaElectronica(
                                 jsonObject,
                                 settingJson,
-                                printer!!.copyNumber,
                                 printer!!.charactersNumber,
                             )
                         }
@@ -173,7 +178,6 @@ class Discrimination(
                             printerBuilder!!.imprimirRecibo(
                                 jsonObject,
                                 settingJson,
-                                printer!!.copyNumber,
                                 printer!!.charactersNumber,
                             )
                         }
@@ -183,7 +187,7 @@ class Discrimination(
                                 jsonObject,
                                 settingJson,
                                 printer!!.copyNumber,
-                                printer!!.charactersNumber,
+
                             )
                         }
                         "IMPRESION_PRE_TICKET" -> {
@@ -191,7 +195,6 @@ class Discrimination(
                             printerBuilder!!.imprimirPreticket(
                                 jsonObject,
                                 settingJson,
-                                printer!!.copyNumber,
                                 printer!!.charactersNumber
                             )
                         }
@@ -206,7 +209,6 @@ class Discrimination(
                             printerBuilder!!.imprimirComandas(
                                 jsonObject,
                                 settingJson,
-                                printer!!.copyNumber,
                                 printer!!.charactersNumber,
                                 comandaType
                             )
@@ -216,7 +218,14 @@ class Discrimination(
                             printerBuilder!!.imprimirCierreCaja(
                                 jsonObject,
                                 settingJson,
-                                printer!!.copyNumber,
+                                printer!!.charactersNumber
+                            )
+                        }
+                        "IMPRESION_ABONO_CUENTA" -> {
+                            android.util.Log.d("Discrimination", "Sending imprimirAbonoCuenta command with documentType: $command")
+                            printerBuilder!!.imprimirAbonoCuenta(
+                                jsonObject,
+                                settingJson,
                                 printer!!.charactersNumber
                             )
                         }
@@ -252,7 +261,7 @@ class Discrimination(
                     dataJson.put("settings", settingsJson)
                     
                     // Calculate summary for sales
-                    if (command == "IMPRESION_FACTURA_ELECTRONICA" || command == "IMPRESION_RECIBO") {
+                    if (command == "IMPRESION_FACTURA_ELECTRONICA" || command == "IMPRESION_RECIBO" || command=="IMPRESION_PRE_TICKET") {
                         val summaryJson = JSONObject()
                         summaryJson.put("discount", String.format(java.util.Locale.US, "%.2f", dataJson.optDouble("discount", 0.0)))
                         summaryJson.put("subtotal", String.format(java.util.Locale.US, "%.2f", dataJson.optDouble("subtotal", 0.0)))
