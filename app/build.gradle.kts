@@ -21,12 +21,12 @@ fun getEnvOrProperty(name: String, defaultValue: String): String {
 }
 
 android {
-    namespace = "com.example.printerswanqara"
+    namespace = "com.printerswanqara"
     compileSdk = 35
     buildFeatures.buildConfig = true
 
     defaultConfig {
-        applicationId = "com.example.printerswanqara"
+        applicationId = "com.printerswanqara"
         minSdk = 30 //Android 11 Red Velvet Cake
         targetSdk = 35
         versionCode = 1
