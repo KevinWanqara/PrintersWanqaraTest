@@ -31,8 +31,15 @@ object PrintJobQueueManager {
             .build()
 
         val workId = workRequest.id.toString()
+        val descriptor = PrintJobDescriptorResolver.resolve(appContext, uri)
         val notificationId = foregroundNotificationIdFrom(workId)
-        notifier.showQueued(notificationId, workId, createdAt)
+        notifier.showQueued(
+            notificationId = notificationId,
+            workId = workId,
+            createdAt = createdAt,
+            jobType = descriptor.jobType,
+            tenant = descriptor.tenant
+        )
 
         WorkManager.getInstance(appContext).enqueueUniqueWork(
             UNIQUE_QUEUE_WORK_NAME,

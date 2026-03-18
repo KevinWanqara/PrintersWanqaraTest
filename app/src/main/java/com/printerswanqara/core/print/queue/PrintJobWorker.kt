@@ -30,11 +30,15 @@ class PrintJobWorker(
         val uriRaw = PrintJobQueueManager.uriFrom(inputData)
         val workId = id.toString()
         val createdAt = PrintJobQueueManager.createdAtFrom(inputData).takeIf { it > 0L } ?: System.currentTimeMillis()
-        val shortJobId = workId.take(8)
         val foregroundNotificationId = PrintJobQueueManager.foregroundNotificationIdFrom(workId)
         val terminalNotificationId = PrintJobQueueManager.terminalNotificationIdFrom(workId)
         val notifier = PrintJobNotifier(applicationContext)
         notifier.ensureChannel()
+
+        val descriptor = PrintJobDescriptorResolver.resolve(
+            applicationContext,
+            Uri.parse(uriRaw ?: "")
+        )
 
         if (uriRaw.isNullOrBlank()) {
             Log.e("PrintJobWorker", "Job failed before start: workId=$workId reason=no_uri")
@@ -42,12 +46,14 @@ class PrintJobWorker(
                 notificationId = terminalNotificationId,
                 workId = workId,
                 createdAt = createdAt,
-                contentText = "Job $shortJobId has no valid URI"
+                jobType = "Desconocido",
+                tenant = descriptor.tenant,
+                contentText = "No se pudo iniciar: URI no valida"
             )
             return Result.failure(
                 workDataOf(
                     RESULT_SUCCESS to false,
-                    RESULT_MESSAGE to "No URI provided"
+                    RESULT_MESSAGE to "No se recibio URI"
                 )
             )
         }
@@ -59,7 +65,9 @@ class PrintJobWorker(
                     notificationId = foregroundNotificationId,
                     workId = workId,
                     createdAt = createdAt,
-                    contentText = "Job $shortJobId started"
+                    jobType = descriptor.jobType,
+                    tenant = descriptor.tenant,
+                    contentText = "Iniciando trabajo de impresion"
                 )
             )
         )
@@ -82,7 +90,7 @@ class PrintJobWorker(
         val uri = Uri.parse(uriRaw)
         val startedAt = System.currentTimeMillis()
         var success = false
-        var resultMessage = "Unknown error"
+        var resultMessage = "Error desconocido"
 
         try {
             PrintDiagnosticsBus.appendPersistentLog(applicationContext, "JOB_START id=$workId uri=$uriRaw")
@@ -90,13 +98,15 @@ class PrintJobWorker(
             if (SchemaParser.isSendToPrintSchema(uri)) {
                 val configs = SchemaParser.parse(uri)
                 if (configs.isEmpty()) {
-                    resultMessage = "No valid configurations in schema"
+                    resultMessage = "No hay configuraciones validas en el esquema"
                 } else {
                     notifier.updateRunning(
                         notificationId = foregroundNotificationId,
                         workId = workId,
                         createdAt = createdAt,
-                        contentText = "Job $shortJobId processing 0/${configs.size}"
+                        jobType = descriptor.jobType,
+                        tenant = descriptor.tenant,
+                        contentText = "Procesando 0/${configs.size} elementos"
                     )
                     val handler = NetworkPrintHandler(applicationContext)
                     success = handler.handleConfigs(configs) { current, total, config, ok ->
@@ -105,15 +115,21 @@ class PrintJobWorker(
                             notificationId = foregroundNotificationId,
                             workId = workId,
                             createdAt = createdAt,
-                            contentText = "Job $shortJobId $current/$total ${config.type} -> ${config.target} [$status]"
+                            jobType = descriptor.jobType,
+                            tenant = descriptor.tenant,
+                            contentText = "Elemento $current/$total - ${config.type} - ${config.target} [$status]"
                         )
                     }
-                    resultMessage = if (success) "Network print schema completed" else "One or more network prints failed"
+                    resultMessage = if (success) {
+                        "Impresion por esquema completada"
+                    } else {
+                        "Una o mas impresiones por esquema fallaron"
+                    }
                 }
             } else {
                 val data = uri.schemeSpecificPart
                 if (data.isNullOrBlank()) {
-                    resultMessage = "No command payload in URI"
+                    resultMessage = "No se encontro contenido de comandos en la URI"
                 } else {
                     val commands = data.split(",").map { it.trimStart('/') }.toTypedArray()
                     val totalJobs = commandPairCount(commands)
@@ -121,7 +137,9 @@ class PrintJobWorker(
                         notificationId = foregroundNotificationId,
                         workId = workId,
                         createdAt = createdAt,
-                        contentText = "Job $shortJobId processing 0/$totalJobs"
+                        jobType = descriptor.jobType,
+                        tenant = descriptor.tenant,
+                        contentText = "Procesando 0/$totalJobs comandos"
                     )
 
                     val db = DatabaseProvider.getDatabase(applicationContext)
@@ -134,14 +152,20 @@ class PrintJobWorker(
                             notificationId = foregroundNotificationId,
                             workId = workId,
                             createdAt = createdAt,
-                            contentText = "Job $shortJobId $current/$total $command [$status]"
+                            jobType = descriptor.jobType,
+                            tenant = descriptor.tenant,
+                            contentText = "Comando $current/$total - $command [$status]"
                         )
                     }
-                    resultMessage = if (success) "Print schema completed" else "One or more print commands failed"
+                    resultMessage = if (success) {
+                        "Impresion completada"
+                    } else {
+                        "Uno o mas comandos de impresion fallaron"
+                    }
                 }
             }
         } catch (e: Exception) {
-            resultMessage = e.message ?: "Unhandled print error"
+            resultMessage = e.message ?: "Error no controlado de impresion"
             PrintDiagnosticsBus.appendPersistentLog(applicationContext, "JOB_ERROR id=$workId msg=$resultMessage")
             Log.e("PrintJobWorker", "Unhandled error workId=$workId uri=$uriRaw msg=$resultMessage", e)
             success = false
@@ -165,7 +189,9 @@ class PrintJobWorker(
                 notificationId = terminalNotificationId,
                 workId = workId,
                 createdAt = createdAt,
-                contentText = "Job $shortJobId completed in ${durationMs}ms"
+                jobType = descriptor.jobType,
+                tenant = descriptor.tenant,
+                contentText = "Completado en ${durationMs}ms"
             )
         } else {
             Log.e("PrintJobWorker", "Job failed: workId=$workId createdAt=$createdAt uri=$uriRaw msg=$resultMessage")
@@ -173,10 +199,14 @@ class PrintJobWorker(
                 notificationId = terminalNotificationId,
                 workId = workId,
                 createdAt = createdAt,
-                contentText = "Job $shortJobId failed: $resultMessage",
+                jobType = descriptor.jobType,
+                tenant = descriptor.tenant,
+                contentText = "Error: $resultMessage",
                 retryUri = uriRaw
             )
         }
+
+        notifier.dismiss(foregroundNotificationId)
 
         return Result.success(
             workDataOf(
@@ -191,3 +221,4 @@ class PrintJobWorker(
         return commands.size / 2
     }
 }
+

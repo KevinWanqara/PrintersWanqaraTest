@@ -198,7 +198,7 @@ class Discrimination(
                             printerBuilder!!.imprimirCotizacion(
                                 jsonObject,
                                 settingJson,
-                                printer!!.copyNumber,
+                                printer!!.charactersNumber,
 
                             )
                         }

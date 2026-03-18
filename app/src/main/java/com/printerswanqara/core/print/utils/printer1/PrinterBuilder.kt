@@ -810,10 +810,10 @@ class PrinterBuilder(private val tipo: String?,    private val context: Context,
 
                 //agregar total
                 prn.escribirTextoSinSalto("Total:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.optDouble("additional_tip",0.0)))
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Entrega:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.optDouble("additional_tip",0.0)))
                 prn.agregarSalto()
 
                 prn.escribirTextoSinSalto("Cambio:")
@@ -1158,14 +1158,22 @@ class PrinterBuilder(private val tipo: String?,    private val context: Context,
                     }
                 }
                 }
+                //Imprimir Propina
+                val additional_tip = js.optString("additional_tip", "")
+                if (!additional_tip.isNullOrEmpty()) {
+                    prn.escribirTextoSinSalto("Propina:")
+                    prn.agregarCaracteresDerecha(10, df.format(js.getDouble("additional_tip")))
+                    prn.agregarSalto()
 
+
+                }
 
                 //Agregar total
                 prn.escribirTextoSinSalto("Total:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.optDouble("additional_tip",0.0)))
                 prn.agregarSalto()
                 prn.escribirTextoSinSalto("Entrega:")
-                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.getDouble("additional_tip")))
+                prn.agregarCaracteresDerecha(10, df.format(js.getDouble("total")+js.optDouble("additional_tip",0.0 )))
                 prn.agregarSalto()
 
                 prn.escribirTextoSinSalto("Cambio:")
@@ -1175,32 +1183,9 @@ class PrinterBuilder(private val tipo: String?,    private val context: Context,
                     df.format(js.optDouble("change_amount" ,0.0)).replace("-", "")
                 )
                 prn.agregarSalto()
-                paymentMethods = js.getJSONArray("payment_methods")
-
-                prn.LineasGuion()
-                prn.alineadoIzquierda()
-                prn.escribirTextoSinSalto("Formas de Pago")
-                prn.agregarSalto()
-                prn.LineasIgual()
-
-                for (j in 0 until paymentMethods.length()) {
-                    jo = paymentMethods.getJSONObject(j)
-
-                    val name = jo.optString("name")
-                    val amount = df.format(jo.optDouble("amount", 0.0))
 
 
 
-                    prn.escribirTextoSinSalto(name )
-                    val nameLength = name.length
-                    val amountLength = amount.length
-
-                    prn.agregarCaracteres((caracteres - nameLength-amountLength).coerceAtLeast(0), "")
-                    prn.escribirTextoSinSalto(amount)
-
-                    prn.agregarSalto()
-
-                }
 
 
                 prn.LineasGuion()

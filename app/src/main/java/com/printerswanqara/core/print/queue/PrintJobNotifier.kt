@@ -5,10 +5,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.graphics.BitmapFactory
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -22,9 +22,12 @@ import java.time.format.DateTimeFormatter
 internal class PrintJobNotifier(private val context: Context) {
 
     companion object {
-        const val CHANNEL_ID = "print_jobs"
-        private const val CHANNEL_NAME = "Print Jobs"
-        private const val CHANNEL_DESCRIPTION = "Queue and status for print jobs"
+        const val PROGRESS_CHANNEL_ID = "print_jobs_progress"
+        const val ALERT_CHANNEL_ID = "print_jobs_alerts"
+        private const val PROGRESS_CHANNEL_NAME = "Progreso de impresion"
+        private const val ALERT_CHANNEL_NAME = "Alertas de impresion"
+        private const val PROGRESS_CHANNEL_DESCRIPTION = "Trabajos en ejecucion"
+        private const val ALERT_CHANNEL_DESCRIPTION = "Trabajos en cola, completados y con error"
         private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter
             .ofPattern("yyyy-MM-dd HH:mm:ss")
             .withZone(ZoneId.systemDefault())
@@ -33,67 +36,118 @@ internal class PrintJobNotifier(private val context: Context) {
     fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
 
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = CHANNEL_DESCRIPTION
+        if (manager.getNotificationChannel(PROGRESS_CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    PROGRESS_CHANNEL_ID,
+                    PROGRESS_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = PROGRESS_CHANNEL_DESCRIPTION
+                    setShowBadge(false)
+                }
+            )
         }
-        manager.createNotificationChannel(channel)
+
+        if (manager.getNotificationChannel(ALERT_CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    ALERT_CHANNEL_ID,
+                    ALERT_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = ALERT_CHANNEL_DESCRIPTION
+                    enableVibration(true)
+                }
+            )
+        }
     }
 
-    fun showQueued(notificationId: Int, workId: String, createdAt: Long) {
+    fun showQueued(
+        notificationId: Int,
+        workId: String,
+        createdAt: Long,
+        jobType: String,
+        tenant: String
+    ) {
         notify(
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "Print queued",
-                statusText = "Added to queue",
+                title = "Impresion en cola",
+                statusText = "En cola, esperando ejecucion",
                 ongoing = false,
                 workId = workId,
-                createdAt = createdAt
+                createdAt = createdAt,
+                jobType = jobType,
+                tenant = tenant
             )
         )
     }
 
-    fun showRunning(notificationId: Int, workId: String, createdAt: Long, contentText: String): Notification {
+    fun showRunning(
+        notificationId: Int,
+        workId: String,
+        createdAt: Long,
+        jobType: String,
+        tenant: String,
+        contentText: String
+    ): Notification {
         return buildStatusNotification(
             notificationId = notificationId,
-            title = "Printing in progress",
+            title = "Imprimiendo",
             statusText = contentText,
             ongoing = true,
             workId = workId,
-            createdAt = createdAt
+            createdAt = createdAt,
+            jobType = jobType,
+            tenant = tenant
         )
     }
 
-    fun updateRunning(notificationId: Int, workId: String, createdAt: Long, contentText: String) {
+    fun updateRunning(
+        notificationId: Int,
+        workId: String,
+        createdAt: Long,
+        jobType: String,
+        tenant: String,
+        contentText: String
+    ) {
         notify(
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "Printing in progress",
+                title = "Imprimiendo",
                 statusText = contentText,
                 ongoing = true,
                 workId = workId,
-                createdAt = createdAt
+                createdAt = createdAt,
+                jobType = jobType,
+                tenant = tenant
             )
         )
     }
 
-    fun showSuccess(notificationId: Int, workId: String, createdAt: Long, contentText: String) {
+    fun showSuccess(
+        notificationId: Int,
+        workId: String,
+        createdAt: Long,
+        jobType: String,
+        tenant: String,
+        contentText: String
+    ) {
         notify(
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "Print completed",
+                title = "Impresion completada",
                 statusText = contentText,
                 ongoing = false,
                 workId = workId,
-                createdAt = createdAt
+                createdAt = createdAt,
+                jobType = jobType,
+                tenant = tenant
             )
         )
     }
@@ -102,6 +156,8 @@ internal class PrintJobNotifier(private val context: Context) {
         notificationId: Int,
         workId: String,
         createdAt: Long,
+        jobType: String,
+        tenant: String,
         contentText: String,
         retryUri: String? = null
     ) {
@@ -109,15 +165,21 @@ internal class PrintJobNotifier(private val context: Context) {
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "Print failed",
+                title = "Error de impresion",
                 statusText = contentText,
                 ongoing = false,
                 workId = workId,
                 createdAt = createdAt,
+                jobType = jobType,
+                tenant = tenant,
                 isError = true,
                 retryUri = retryUri
             )
         )
+    }
+
+    fun dismiss(notificationId: Int) {
+        NotificationManagerCompat.from(context).cancel(notificationId)
     }
 
     private fun notify(notificationId: Int, notification: Notification) {
@@ -138,6 +200,8 @@ internal class PrintJobNotifier(private val context: Context) {
         ongoing: Boolean,
         workId: String,
         createdAt: Long,
+        jobType: String,
+        tenant: String,
         isError: Boolean = false,
         retryUri: String? = null
     ): Notification {
@@ -151,7 +215,8 @@ internal class PrintJobNotifier(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val channelId = if (ongoing) PROGRESS_CHANNEL_ID else ALERT_CHANNEL_ID
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(if (isError) android.R.drawable.stat_notify_error else R.drawable.ic_notification_wanqara)
             .setLargeIcon(
                 BitmapFactory.decodeResource(
@@ -160,25 +225,40 @@ internal class PrintJobNotifier(private val context: Context) {
                 )
             )
             .setContentTitle(title)
-            .setContentText(statusText)
-            .setSubText("Work ${workId.take(8)}")
-            .setStyle(
+            .setContentText("$statusText - $jobType")
+            .setSubText("$tenant")
+            .setStyle( 
                 NotificationCompat.BigTextStyle()
                     .bigText(
                         buildString {
+                            append("Estado: ")
                             append(statusText)
-                            append("\nWork ID: ")
-                            append(workId)
-                            append("\nCreated: ")
+                            append("\nTipo: ")
+                            append(jobType)
+                            append("\nDominio: ")
+                            append(tenant)
+                            append("\nCreado: ")
                             append(formatDate(createdAt))
                         }
                     )
             )
             .setContentIntent(contentIntent)
-            .setOnlyAlertOnce(true)
+            .setCategory(if (isError) NotificationCompat.CATEGORY_ERROR else NotificationCompat.CATEGORY_STATUS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOnlyAlertOnce(ongoing)
             .setOngoing(ongoing)
             .setAutoCancel(!ongoing && !isError)
-            .setPriority(if (isError) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW)
+            .setPriority(
+                when {
+                    ongoing -> NotificationCompat.PRIORITY_LOW
+                    isError -> NotificationCompat.PRIORITY_HIGH
+                    else -> NotificationCompat.PRIORITY_DEFAULT
+                }
+            )
+
+        if (!ongoing) {
+            builder.setDefaults(NotificationCompat.DEFAULT_ALL)
+        }
 
         if (isError && !retryUri.isNullOrBlank()) {
             val retryIntent = Intent(context, PrintJobRetryReceiver::class.java).apply {
@@ -193,7 +273,7 @@ internal class PrintJobNotifier(private val context: Context) {
             )
             builder.addAction(
                 android.R.drawable.ic_popup_sync,
-                "Retry",
+                "Reintentar",
                 retryPendingIntent
             )
         }
@@ -206,3 +286,4 @@ internal class PrintJobNotifier(private val context: Context) {
         return DATE_FORMATTER.format(Instant.ofEpochMilli(timestamp))
     }
 }
+
