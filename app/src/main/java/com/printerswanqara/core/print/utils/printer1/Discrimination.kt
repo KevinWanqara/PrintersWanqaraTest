@@ -62,7 +62,10 @@ class Discrimination(
 
 
     
-    suspend operator fun invoke(commands: Array<String>): Boolean {
+    suspend operator fun invoke(
+        commands: Array<String>,
+        onCommandProgress: ((current: Int, total: Int, command: String, success: Boolean) -> Unit)? = null
+    ): Boolean {
         var errorCount = 0
         var errorCommand: Array<String> = arrayOf()
         if (commands.isEmpty()) return false
@@ -89,12 +92,19 @@ class Discrimination(
             return false
         }
     
+        val totalPairs = commandPairs.size
+
         // Process each command pair
-        for ((command, transactionID) in commandPairs) {
+        for ((index, pair) in commandPairs.withIndex()) {
+            val (command, transactionID) = pair
+            var commandSuccess = false
+            var commandFailed = false
             if (command.isEmpty() || transactionID.isEmpty()) {
                 android.util.Log.e("Discrimination", "Invalid command pair: command='$command', id='$transactionID'")
                 errorCount++
+                commandFailed = true
                 errorCommand = errorCommand.plus(command)
+                onCommandProgress?.invoke(index + 1, totalPairs, command, false)
                 continue
             }
     
@@ -157,7 +167,9 @@ class Discrimination(
             if (jsonObject == null) {
                 android.util.Log.e("Discrimination", "Data not received for command '$command', skipping print.")
                 errorCount++
+                commandFailed = true
                 errorCommand = errorCommand.plus(command)
+                onCommandProgress?.invoke(index + 1, totalPairs, command, false)
                 continue
             }
     
@@ -232,6 +244,7 @@ class Discrimination(
                         else -> {
                             android.util.Log.e("Discrimination", "Unknown documentType: $command")
                             errorCount++
+                            commandFailed = true
                             errorCommand = errorCommand.plus(command)
                         }
                     }
@@ -242,9 +255,11 @@ class Discrimination(
                         printerBuilder?.usbOutputStream?.flush()
                         kotlinx.coroutines.delay(200)
                     }
+                    if (!commandFailed) commandSuccess = true
                 } catch (e: Exception) {
                     android.util.Log.e("Discrimination", "Error printing job for $command: ${e.message}", e)
                     errorCount++
+                    commandFailed = true
                     errorCommand = errorCommand.plus(command)
                 }
             } else if (printer != null && printer!!.type == PrinterType.SERVER.type) {
@@ -356,24 +371,30 @@ class Discrimination(
                             android.util.Log.d("Discrimination", "SERVER response (Retrofit) received for $command. Body: $responseBody")
                             val phaseDur = System.currentTimeMillis() - phaseStart
                             PrintDiagnosticsBus.phaseListener?.invoke(PrintDiagnosticsBus.PhaseEvent(command, "server-print", phaseDur, true))
+                            commandSuccess = true
                         } else {
                             errorCount++
+                            commandFailed = true
                             errorCommand = errorCommand.plus(command)
                         }
                     } else {
                         android.util.Log.e("Discrimination", "Unknown documentType for SERVER: $command")
                         errorCount++
+                        commandFailed = true
                         errorCommand = errorCommand.plus(command)
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("Discrimination", "Error sending SERVER job for $command: ${e.message}", e)
                     errorCount++
+                    commandFailed = true
                     errorCommand = errorCommand.plus(command)
                 }
             } else {
                 errorCount++
+                commandFailed = true
                 if (!errorCommand.contains(command)) errorCommand = errorCommand.plus(command)
             }
+            onCommandProgress?.invoke(index + 1, totalPairs, command, commandSuccess && !commandFailed)
         }
     
         // Close connection only after all jobs

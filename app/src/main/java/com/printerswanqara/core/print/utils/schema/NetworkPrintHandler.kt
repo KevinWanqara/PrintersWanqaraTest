@@ -25,7 +25,10 @@ class NetworkPrintHandler(private val context: Context) {
      * Process a list of printer configurations
      * Returns true if all succeed, false otherwise
      */
-    suspend fun handleConfigs(configs: List<PrinterConfig>): Boolean {
+    suspend fun handleConfigs(
+        configs: List<PrinterConfig>,
+        onProgress: ((current: Int, total: Int, config: PrinterConfig, success: Boolean) -> Unit)? = null
+    ): Boolean {
         if (configs.isEmpty()) {
             Log.w(TAG, "No configurations to process")
             return false
@@ -43,6 +46,7 @@ class NetworkPrintHandler(private val context: Context) {
             
             try {
                 val success = processConfig(config)
+                onProgress?.invoke(index + 1, configs.size, config, success)
                 if (success) {
                     successCount++
                     Log.d(TAG, "Config ${index + 1} succeeded")
@@ -52,6 +56,7 @@ class NetworkPrintHandler(private val context: Context) {
                 }
             } catch (e: Exception) {
                 errorCount++
+                onProgress?.invoke(index + 1, configs.size, config, false)
                 Log.e(TAG, "Exception processing config ${index + 1}: ${e.message}", e)
                 PrintDiagnosticsBus.appendPersistentLog(
                     context,

@@ -1,7 +1,10 @@
 package com.printerswanqara
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -53,6 +56,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Settings
 import com.printerswanqara.api.ApiClient
+import androidx.core.content.ContextCompat
 
 // Added imports for annotated string styling
 import androidx.compose.ui.text.SpanStyle
@@ -62,10 +66,14 @@ import androidx.compose.ui.text.font.FontWeight
 import com.printerswanqara.DiagnosticsScreen
 
 class MainActivity : ComponentActivity() {
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     //Main Activity
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        maybeRequestNotificationPermission()
         setContent {
             PrintersWanqaraTestTheme {
                 val navController = rememberNavController()
@@ -340,6 +348,17 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun maybeRequestNotificationPermission() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
