@@ -1,10 +1,10 @@
 [versions]
 accompanistNavigationAnimation = "0.34.0"
 accompanistPermissions = "0.34.0-alpha"
-agp = "8.13.2"
+agp = "9.1.0"
 escposCoffee = "4.1.0"
 escposThermalprinterAndroid = "3.3.0"
-kotlin = "2.0.21"
+kotlin = "2.2.10"
 coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
