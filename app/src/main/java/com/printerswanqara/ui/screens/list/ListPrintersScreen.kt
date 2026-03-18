@@ -323,7 +323,6 @@ fun PrinterCard(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        InfoBadge(label = "Copias", value = printer.copyNumber.toString())
                         InfoBadge(label = "Chars", value = printer.charactersNumber.toString())
                     }
                 }

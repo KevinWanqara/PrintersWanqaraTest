@@ -297,10 +297,10 @@ fun SimplifiedPrinterSetup(
                             var allSuccess = true
                             for (docKey in allDocKeys) {
                                 val success = when (selectedMode) {
-                                    PrinterType.USB -> saveUsbPrinter(context, printerName, characters, 1, docKey)
-                                    PrinterType.BLUETOOTH -> saveBluetoothPrinter(context, printerName, bluetoothDevice, 0, docKey, 1, characters)
-                                    PrinterType.WIFI -> saveWifiPrinter(context, printerName, wifiIp, wifiPort, docKey, 1, characters)
-                                    PrinterType.SERVER -> saveServerPrinter(context, printerName, wifiIp, docKey, 1, characters)
+                                    PrinterType.USB -> saveUsbPrinter(context, printerName, characters, docKey)
+                                    PrinterType.BLUETOOTH -> saveBluetoothPrinter(context, printerName, bluetoothDevice, 0, docKey, characters)
+                                    PrinterType.WIFI -> saveWifiPrinter(context, printerName, wifiIp, wifiPort, docKey, characters)
+                                    PrinterType.SERVER -> saveServerPrinter(context, printerName, wifiIp, docKey, characters)
                                 }
                                 if (!success) allSuccess = false
                             }

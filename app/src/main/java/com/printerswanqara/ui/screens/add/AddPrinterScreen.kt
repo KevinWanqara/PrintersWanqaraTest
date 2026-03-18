@@ -61,6 +61,7 @@ import com.printerswanqara.core.print.test.PrintUSBTest
 import com.printerswanqara.core.print.test.PrintWifiTest
 import com.printerswanqara.core.print.test.PrintBluetoothTest
 
+private const val DEPRECATED_COPY_NUMBER = 1
 
 @OptIn(ExperimentalLayoutApi::class)
 //@RequiresApi(Build.VERSION_CODES.P)
@@ -83,7 +84,6 @@ fun AddPrinterScreen(navController: NavController) {
     var wifiIp by remember { mutableStateOf("") }
     var wifiPort by remember { mutableIntStateOf(0) }
     var characters by remember { mutableIntStateOf(0) }
-    var copyNumber by remember { mutableIntStateOf(0) }
     var showBluetoothPicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -495,31 +495,8 @@ fun AddPrinterScreen(navController: NavController) {
                     }
                 }
             }
-            // Step 4: Copy number
+            // Step 4: Document type selection
             if (step == 4) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Text("Numero de copias:")
-                    OutlinedTextField(
-                        value = if (copyNumber == 0) "" else copyNumber.toString(),
-                        onValueChange = { copyNumber = it.toIntOrNull() ?: 0 },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.weight(1f, fill = true))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        OutlinedButton(onClick = { step = 2 },
-                            border = BorderStroke(2.dp, Primary),
-                            ) { Text("Atras") }
-                        Button(
-                            onClick = { step = 5 },
-                            enabled = copyNumber > 0,
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                        ) { Text("Siguiente") }
-                    }
-                }
-            }
-            // Step 5: Document type selection
-            if (step == 5) {
                 Text("Que tipo de documento desea imprimir:")
                 val docTypeObj = remember { documentType() }
                 val docValues = remember { docTypeObj.getDocuments() }
@@ -599,7 +576,7 @@ fun AddPrinterScreen(navController: NavController) {
                     ) {
                         OutlinedButton(onClick = { step = 3 }, border = BorderStroke(2.dp, Primary)) { Text("Atras") }
                         Button(
-                            onClick = { step = 6 },
+                            onClick = { step = 5 },
                             colors = ButtonDefaults.buttonColors(containerColor = Primary),
                             enabled = selectedDocTypes.value.isNotEmpty()
                         ) { Text("Siguiente") }
@@ -610,8 +587,8 @@ fun AddPrinterScreen(navController: NavController) {
 
 
             }
-            // Step 6: Save
-            if (step == 6) {
+            // Step 5: Save
+            if (step == 5) {
                 Text(
                     "Revisar y Guardar",
                     modifier = Modifier.fillMaxWidth(),
@@ -697,14 +674,6 @@ fun AddPrinterScreen(navController: NavController) {
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    "Copias: $copyNumber",
-                    modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis
-                )
                 Spacer(Modifier.height(12.dp))
                 // Show selected document types as small cards
                 val docTypeObj = documentType()
@@ -744,7 +713,7 @@ fun AddPrinterScreen(navController: NavController) {
                             //val docKeys = docTypeObj.getDocuments().mapNotNull { docTypeObj.findKeyByDocument(it) }
                             var allSuccess = true
                             println(
-                                "Saving printer: $printerName, Mode: ${selectedMode.type}, Characters: $characters, Copies: $copyNumber, Docs: ${selectedDocTypes.value.joinToString(", ")}"
+                                "Saving printer: $printerName, Mode: ${selectedMode.type}, Characters: $characters, Docs: ${selectedDocTypes.value.joinToString(", ")}"
                             )
 
                             for (docKey in selectedDocTypes.value){
@@ -753,16 +722,16 @@ fun AddPrinterScreen(navController: NavController) {
                                 )
                                 val success = when(selectedMode) {
                                     PrinterType.USB -> {
-                                        saveUsbPrinter(context,printerName, characters, copyNumber, docKey)
+                                        saveUsbPrinter(context,printerName, characters, docKey)
                                     }
                                     PrinterType.BLUETOOTH -> {
-                                        saveBluetoothPrinter(context, printerName, bluetoothDevice, wifiPort,docKey,copyNumber,characters)
+                                        saveBluetoothPrinter(context, printerName, bluetoothDevice, wifiPort,docKey,characters)
                                     }
                                     PrinterType.WIFI -> {
-                                        saveWifiPrinter(context, printerName, wifiIp, wifiPort,docKey,copyNumber,characters)
+                                        saveWifiPrinter(context, printerName, wifiIp, wifiPort,docKey,characters)
                                     }
                                     PrinterType.SERVER -> {
-                                        saveServerPrinter(context, printerName, wifiIp, docKey, copyNumber, characters)
+                                        saveServerPrinter(context, printerName, wifiIp, docKey, characters)
                                     }
                                 }
                                 if (!success) allSuccess = false
@@ -778,7 +747,6 @@ fun AddPrinterScreen(navController: NavController) {
                                 wifiIp = ""
                                 wifiPort = 0
                                 characters = 0
-                                copyNumber = 0
                                 documentType.value = ""
                                 navController.navigate("list_printers") // Navigate to the home screen
 
@@ -823,21 +791,20 @@ suspend fun saveUsbPrinter(
     context: Context,
     name: String,
     charactersNumber: Int,
-    copyNumber: Int,
     documentType: String
 ): Boolean {
     val entity = PrintersEntity(
         name = name,
         fontSize = "A",
         documentType = documentType,
-        copyNumber = copyNumber,
+        copyNumber = DEPRECATED_COPY_NUMBER,
         charactersNumber = charactersNumber,
         type = PrinterType.USB.type,
         address = "",
         port = 0
     )
     println(
-        "Saving USB printer: $name, Characters: $charactersNumber, Copies: $copyNumber, Document Type: $documentType"
+        "Saving USB printer: $name, Characters: $charactersNumber, Document Type: $documentType"
     )
     return try {
         withContext(Dispatchers.IO) {
@@ -859,7 +826,6 @@ suspend fun saveBluetoothPrinter(
     ip: String,
     port: Int,
     documentType: String,
-    copyNumber: Int ,
     charactersNumber: Int
 
 ):Boolean {
@@ -867,14 +833,14 @@ suspend fun saveBluetoothPrinter(
         name = name,
         fontSize = "A",
         documentType = documentType,
-        copyNumber = copyNumber,
+        copyNumber = DEPRECATED_COPY_NUMBER,
         charactersNumber = charactersNumber,
         type = PrinterType.BLUETOOTH.type,
         address = ip,
         port = port
     )
     println(
-        "Saving Bluetooth printer: $name, IP: $ip, Port: $port, Characters: $charactersNumber, Copies: $copyNumber, Document Type: $documentType"
+        "Saving Bluetooth printer: $name, IP: $ip, Port: $port, Characters: $charactersNumber, Document Type: $documentType"
     )
     return try {
         withContext(Dispatchers.IO) {
@@ -894,21 +860,20 @@ suspend fun saveWifiPrinter(
     ip: String,
     port: Int,
     documentType: String,
-    copyNumber: Int ,
     charactersNumber: Int
 ): Boolean {
     val entity = PrintersEntity(
         name = name,
         fontSize = "A",
         documentType = documentType,
-        copyNumber = copyNumber,
+        copyNumber = DEPRECATED_COPY_NUMBER,
         charactersNumber = charactersNumber,
         type = PrinterType.WIFI.type,
         address = ip,
         port = port
     )
     println(
-        "Saving WiFi printer: $name, IP: $ip, Port: $port, Characters: $charactersNumber, Copies: $copyNumber, Document Type: $documentType"
+        "Saving WiFi printer: $name, IP: $ip, Port: $port, Characters: $charactersNumber, Document Type: $documentType"
     )
     return try {
         withContext(Dispatchers.IO) {
@@ -928,21 +893,20 @@ suspend fun saveServerPrinter(
     name: String,
     address: String,
     documentType: String,
-    copyNumber: Int,
     charactersNumber: Int
 ): Boolean {
     val entity = PrintersEntity(
         name = name,
         fontSize = "A",
         documentType = documentType,
-        copyNumber = copyNumber,
+        copyNumber = DEPRECATED_COPY_NUMBER,
         charactersNumber = charactersNumber,
         type = PrinterType.SERVER.type,
         address = address,
         port = 51512 // Fixed port for server printers
     )
     println(
-        "Saving SERVER printer: $name, Address: $address, Characters: $charactersNumber, Copies: $copyNumber, Document Type: $documentType"
+        "Saving SERVER printer: $name, Address: $address, Characters: $charactersNumber, Document Type: $documentType"
     )
     return try {
         withContext(Dispatchers.IO) {

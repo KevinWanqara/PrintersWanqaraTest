@@ -66,7 +66,6 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
     var printerName by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var port by remember { mutableIntStateOf(0) }
-    var copyNumber by remember { mutableIntStateOf(0) }
     var characters by remember { mutableIntStateOf(0) }
     var documentType by remember { mutableStateOf("") }
 
@@ -98,7 +97,6 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                 printerName = it.name
                 address = it.address ?: ""
                 port = it.port ?: 0
-                copyNumber = it.copyNumber
                 characters = it.charactersNumber
                 documentType = it.documentType
             }
@@ -299,22 +297,13 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                     }
                     // USB has no extra fields
                 }
-                // Editable copy number and characters
+                // Editable characters
                 OutlinedTextField(
                     value = characters.toString(),
                     onValueChange = { newValue ->
                         characters = newValue.toIntOrNull() ?: 0
                     },
                     label = { Text("Caracteres") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = copyNumber.toString(),
-                    onValueChange = { newValue ->
-                        copyNumber = newValue.toIntOrNull() ?: 0
-                    },
-                    label = { Text("Numero de copias") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.weight(1f, fill = true))
@@ -351,7 +340,7 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                             //val docKeys = docTypeObj.getDocuments().mapNotNull { docTypeObj.findKeyByDocument(it) }
                             var allSuccess = true
                             println(
-                                "Saving printer: $printerName, Mode: ${selectedType}, Characters: $characters, Copies: $copyNumber, Docs: $documentType"
+                                "Saving printer: $printerName, Mode: ${selectedType}, Characters: $characters, Docs: $documentType"
                             )
 
 
@@ -360,16 +349,16 @@ fun EditPrinterScreen(printerId: String?,navController: NavController) {
                                 )
                                 val success = when(selectedType) {
                                     PrinterType.USB.type -> {
-                                        saveUsbPrinter(context,printerName, characters, copyNumber, documentType)
+                                        saveUsbPrinter(context,printerName, characters, documentType)
                                     }
                                     PrinterType.BLUETOOTH.type -> {
-                                        saveBluetoothPrinter(context, printerName, bluetoothDevice, port,documentType,copyNumber,characters)
+                                        saveBluetoothPrinter(context, printerName, bluetoothDevice, port,documentType,characters)
                                     }
                                     PrinterType.WIFI.type -> {
-                                        saveWifiPrinter(context, printerName, address, port,documentType,copyNumber,characters)
+                                        saveWifiPrinter(context, printerName, address, port,documentType,characters)
                                     }
                                     PrinterType.SERVER.type -> {
-                                        saveServerPrinter(context, printerName, address, documentType, copyNumber, characters)
+                                        saveServerPrinter(context, printerName, address, documentType, characters)
                                     }
                                     else -> false // Handle unsupported printer types
                                 }
