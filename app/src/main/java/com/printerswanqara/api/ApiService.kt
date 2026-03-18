@@ -1,6 +1,6 @@
 package com.printerswanqara.api
 
-import PaymentAccountService
+import com.printerswanqara.api.accounts.PaymentAccountService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body

@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.dagger.hilt.android") version "2.44"
+    id("com.google.dagger.hilt.android") version "2.56.2"
     kotlin("kapt")
 
 }
@@ -29,8 +29,8 @@ android {
         applicationId = "com.printerswanqara"
         minSdk = 30 //Android 11 Red Velvet Cake
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
@@ -49,7 +49,11 @@ android {
             val baseUrl = getEnvOrProperty("BASE_URL_RELEASE", "")
             buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
 
-            isMinifyEnabled = false
+            // Enables code-related app optimization.
+            isMinifyEnabled = true
+
+            // Enables resource shrinking.
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -70,8 +74,8 @@ android {
 }
 
 dependencies {
-    val room_version = "2.6.0"
-    val hilt_version = "2.44"
+    val room_version = "2.7.2"
+    val hilt_version = "2.56.2"
     implementation(libs.androidx.room.common.jvm)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -106,7 +110,6 @@ dependencies {
 
     // Room
     implementation("androidx.room:room-runtime:$room_version")
-    annotationProcessor("androidx.room:room-compiler:$room_version")
     kapt("androidx.room:room-compiler:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
     implementation("androidx.room:room-rxjava2:$room_version")
