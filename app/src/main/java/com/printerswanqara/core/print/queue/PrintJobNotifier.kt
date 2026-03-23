@@ -24,9 +24,9 @@ internal class PrintJobNotifier(private val context: Context) {
     companion object {
         const val PROGRESS_CHANNEL_ID = "print_jobs_progress"
         const val ALERT_CHANNEL_ID = "print_jobs_alerts"
-        private const val PROGRESS_CHANNEL_NAME = "Progreso de impresion"
-        private const val ALERT_CHANNEL_NAME = "Alertas de impresion"
-        private const val PROGRESS_CHANNEL_DESCRIPTION = "Trabajos en ejecucion"
+        private const val PROGRESS_CHANNEL_NAME = "Progreso de impresión"
+        private const val ALERT_CHANNEL_NAME = "Alertas de impresión"
+        private const val PROGRESS_CHANNEL_DESCRIPTION = "Trabajos en ejecución"
         private const val ALERT_CHANNEL_DESCRIPTION = "Trabajos en cola, completados y con error"
         private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter
             .ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -75,8 +75,8 @@ internal class PrintJobNotifier(private val context: Context) {
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "Impresion en cola",
-                statusText = "En cola, esperando ejecucion",
+                title = "impresión en cola",
+                statusText = "En cola, esperando ejecución",
                 ongoing = false,
                 workId = workId,
                 createdAt = createdAt,
@@ -141,7 +141,7 @@ internal class PrintJobNotifier(private val context: Context) {
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "Impresion completada",
+                title = "impresión completada",
                 statusText = contentText,
                 ongoing = false,
                 workId = workId,
@@ -165,7 +165,7 @@ internal class PrintJobNotifier(private val context: Context) {
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "Error de impresion",
+                title = "Error de impresión",
                 statusText = contentText,
                 ongoing = false,
                 workId = workId,

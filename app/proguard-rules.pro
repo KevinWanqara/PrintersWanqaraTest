@@ -19,3 +19,24 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Retrofit + Kotlin suspend reflection support in release builds.
+# Prevents crashes like:
+# java.lang.Class cannot be cast to java.lang.reflect.ParameterizedType
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations, AnnotationDefault
+
+# Keep Retrofit interfaces and annotated methods available for reflection.
+-if interface * { @retrofit2.http.* <methods>; }
+-keep,allowobfuscation interface <1>
+-keepclassmembers,allowshrinking,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+
+# Keep coroutine continuation type metadata used by Retrofit suspend adapters.
+-keep,allowshrinking,allowobfuscation class kotlin.coroutines.Continuation
+
+# Gson reflective parsing for API DTOs.
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keep class com.printerswanqara.api.** { *; }

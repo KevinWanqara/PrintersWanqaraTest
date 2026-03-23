@@ -29,8 +29,8 @@ android {
         applicationId = "com.printerswanqara"
         minSdk = 30 //Android 11 Red Velvet Cake
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
@@ -48,6 +48,10 @@ android {
             versionNameSuffix = "-RELEASE"
             val baseUrl = getEnvOrProperty("BASE_URL_RELEASE", "")
             buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
+
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
 
             // Enables code-related app optimization.
             isMinifyEnabled = true
