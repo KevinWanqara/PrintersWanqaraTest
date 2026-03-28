@@ -1,7 +1,9 @@
 package com.printerswanqara.core.print.queue
 
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -24,6 +26,42 @@ class PrintJobWorker(
     companion object {
         private const val RESULT_SUCCESS = "result_success"
         private const val RESULT_MESSAGE = "result_message"
+    }
+
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val uriRaw = PrintJobQueueManager.uriFrom(inputData)
+        val workId = id.toString()
+        val createdAt = PrintJobQueueManager.createdAtFrom(inputData).takeIf { it > 0L } ?: System.currentTimeMillis()
+        val foregroundNotificationId = PrintJobQueueManager.foregroundNotificationIdFrom(workId)
+        val notifier = PrintJobNotifier(applicationContext)
+        notifier.ensureChannel()
+
+        val descriptor = PrintJobDescriptorResolver.resolve(
+            applicationContext,
+            Uri.parse(uriRaw ?: "")
+        )
+
+        val notification = notifier.showRunning(
+            notificationId = foregroundNotificationId,
+            workId = workId,
+            createdAt = createdAt,
+            jobType = descriptor.jobType,
+            tenant = descriptor.tenant,
+            contentText = "Iniciando trabajo de impresion"
+        )
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                foregroundNotificationId,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            ForegroundInfo(
+                foregroundNotificationId,
+                notification
+            )
+        }
     }
 
     override suspend fun doWork(): Result {
@@ -58,19 +96,14 @@ class PrintJobWorker(
             )
         }
 
-        setForeground(
-            ForegroundInfo(
-                foregroundNotificationId,
-                notifier.showRunning(
-                    notificationId = foregroundNotificationId,
-                    workId = workId,
-                    createdAt = createdAt,
-                    jobType = descriptor.jobType,
-                    tenant = descriptor.tenant,
-                    contentText = "Iniciando trabajo de impresion"
-                )
-            )
-        )
+        try {
+            setForeground(getForegroundInfo())
+        } catch (e: Exception) {
+            Log.e("PrintJobWorker", "Failed to set foreground info", e)
+            // On some Android versions/states, setForeground might still fail even with expedited
+            // If it's critical, we might return failure, but usually we try to continue if possible
+            // unless the OS strictly requires it.
+        }
 
         val transportListener: (PrinterBuilder.PrinterDiagnosticsEvent) -> Unit = { evt ->
             val ms = evt.endTimestamp - evt.startTimestamp
@@ -221,4 +254,3 @@ class PrintJobWorker(
         return commands.size / 2
     }
 }
-

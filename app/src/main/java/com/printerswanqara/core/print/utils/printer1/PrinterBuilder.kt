@@ -17,12 +17,12 @@ import com.printerswanqara.core.print.EscposCoffee
 import com.printerswanqara.core.print.messageBuilder.MediaBuilder
 import com.printerswanqara.core.printType.PrinterType
 import com.github.anastaciocintra.escpos.Style
-import com.github.anastaciocintra.output.TcpIpOutputStream
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.io.OutputStream
+import java.net.InetSocketAddress
 import java.net.Socket
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -210,6 +210,22 @@ class PrinterBuilder(private val tipo: String?,    private val context: Context,
         closeBluetooth()
         closeRed()
         closeUsbPrinter()
+    }
+
+    private fun <T> withWifiOutputStream(action: (OutputStream) -> T): T {
+        val targetAddress = address?.trim().takeUnless { it.isNullOrBlank() }
+            ?: throw IllegalStateException("WiFi address is empty")
+        val targetPort = port ?: throw IllegalStateException("WiFi port is empty")
+
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(targetAddress, targetPort), 3000)
+            socket.soTimeout = 5000
+            socket.tcpNoDelay = true
+            socket.keepAlive = true
+            socket.getOutputStream().use { outputStream ->
+                return action(outputStream)
+            }
+        }
     }
     //sj settings object
     //js data object
@@ -2479,48 +2495,47 @@ class PrinterBuilder(private val tipo: String?,    private val context: Context,
         enviarImprimir(prn.getTrabajo())
     }
 
-
     fun enviarImprimir(trabajo: String) {
         println("Enviando trabajo de impresión...")
         val startTs = System.currentTimeMillis()
         var success = false
         var error: String? = null
+        var failure: Exception? = null
         try {
             when (tipo) {
                 PrinterType.WIFI.type -> {
-                    TcpIpOutputStream(this.address, this.port!!).use { outputStream ->
+                    withWifiOutputStream { outputStream ->
                         val style = Style()
                         val escposCoffee = EscposCoffee(style, outputStream)
                         escposCoffee.printMessage(trabajo)
-                        success = true
                     }
+                    success = true
                 }
                 PrinterType.BLUETOOTH.type -> {
-                    if (this.streamBluetooth != null) {
-                        val style = Style()
-                        val escposCoffee = EscposCoffee(style, this.streamBluetooth!!)
-                        escposCoffee.printMessage(trabajo)
+                    val bluetoothStream = this.streamBluetooth
+                        ?: throw IllegalStateException("Bluetooth stream is null")
 
-                        Thread.sleep(4000)
-                        this.streamBluetooth?.flush()
-                        success = true
-                    } else {
-                        error = "Bluetooth stream is null"
-                    }
+                    val style = Style()
+                    val escposCoffee = EscposCoffee(style, bluetoothStream)
+                    escposCoffee.printMessage(trabajo)
+
+                    Thread.sleep(4000)
+                    bluetoothStream.flush()
+                    success = true
                 }
                 else -> {
-                    if (usbOutputStream != null) {
-                        val style = Style()
-                        val escposCoffee = EscposCoffee(style, usbOutputStream!!)
-                        escposCoffee.printMessage(trabajo)
-                        success = true
-                    } else {
-                        error = "USB output stream is null"
-                    }
+                    val stream = usbOutputStream
+                        ?: throw IllegalStateException("USB output stream is null")
+
+                    val style = Style()
+                    val escposCoffee = EscposCoffee(style, stream)
+                    escposCoffee.printMessage(trabajo)
+                    success = true
                 }
             }
         } catch (e: Exception) {
-            error = e.message
+            error = e.message ?: e.javaClass.simpleName
+            failure = e
             e.printStackTrace()
         } finally {
             val endTs = System.currentTimeMillis()
@@ -2537,43 +2552,59 @@ class PrinterBuilder(private val tipo: String?,    private val context: Context,
                 )
             )
         }
+
+        failure?.let { throw it }
+        if (!success) {
+            throw IllegalStateException(error ?: "Print job failed")
+        }
     }
 
-
-
-
     suspend fun printMediaJob(mediaBuilder: MediaBuilder, caracteres: Int, fontName: String = "A") {
-            try {
-                when (tipo) {
-                    PrinterType.WIFI.type -> {
-                        TcpIpOutputStream(this.address, this.port!!).use { outputStream ->
+        try {
+            when (tipo) {
+                PrinterType.WIFI.type -> {
+                    val targetAddress = address?.trim().takeUnless { it.isNullOrBlank() }
+                        ?: throw IllegalStateException("WiFi address is empty")
+                    val targetPort = port ?: throw IllegalStateException("WiFi port is empty")
+
+                    Socket().use { socket ->
+                        socket.connect(InetSocketAddress(targetAddress, targetPort), 3000)
+                        socket.soTimeout = 5000
+                        socket.tcpNoDelay = true
+                        socket.keepAlive = true
+                        socket.getOutputStream().use { outputStream ->
                             val style = Style()
                             val escposCoffee = EscposCoffee(style, outputStream, caracteres, fontName)
                             escposCoffee.printMedia(mediaBuilder)
                         }
                     }
-                    PrinterType.BLUETOOTH.type -> {
-                        if (this.streamBluetooth != null) {
-                            val style = Style()
-                            val escposCoffee = EscposCoffee(style, this.streamBluetooth!!, caracteres, fontName)
-                            escposCoffee.printMedia(mediaBuilder)
-                            kotlinx.coroutines.delay(2000)
-                            this.streamBluetooth?.flush()
-                        } else {
-                            println("Bluetooth stream is null")
-                        }
-                    }
-                    else -> {
-                        val style = Style()
-                        val escposCoffee = EscposCoffee(style, this.usbOutputStream!!, caracteres, fontName)
-                        escposCoffee.printMedia(mediaBuilder)
-                    }
                 }
-            } catch (e: Exception) {
-                println("")
+                PrinterType.BLUETOOTH.type -> {
+                    val bluetoothStream = this.streamBluetooth
+                        ?: throw IllegalStateException("Bluetooth stream is null")
+
+                    val style = Style()
+                    val escposCoffee = EscposCoffee(style, bluetoothStream, caracteres, fontName)
+                    escposCoffee.printMedia(mediaBuilder)
+                    kotlinx.coroutines.delay(2000)
+                    bluetoothStream.flush()
+                }
+                else -> {
+                    val stream = this.usbOutputStream
+                        ?: throw IllegalStateException("USB output stream is null")
+
+                    val style = Style()
+                    val escposCoffee = EscposCoffee(style, stream, caracteres, fontName)
+                    escposCoffee.printMedia(mediaBuilder)
+                }
             }
+        } catch (e: Exception) {
+            println("Error printing media job: ${e.message}")
+            throw e
+        }
 
     }
+
 
     fun cerrarConexionBluetooth() {
         try {

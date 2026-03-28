@@ -1073,8 +1073,13 @@ suspend fun testDirectWifiPrinter(
             logs.add(0, "🔧 Inicializando conexión WiFi...")
             logs.add(0, "📡 Conectando a $ip:$port...")
 
-            // Use TcpIpOutputStream from the library (same as PrinterBuilder does internally)
-            com.github.anastaciocintra.output.TcpIpOutputStream(ip, port).use { outputStream ->
+            // Open a direct TCP socket and send a minimal ESC/POS test sequence
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(ip, port), 3000)
+                socket.soTimeout = 5000
+                socket.tcpNoDelay = true
+                socket.keepAlive = true
+                val outputStream = socket.getOutputStream()
                 logs.add(0, "✅ Conexión TCP establecida")
                 logs.add(0, "📡 Enviando comando de inicialización ESC @...")
 

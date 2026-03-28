@@ -30,8 +30,8 @@ android {
         minSdk = 30 //Android 11 Red Velvet Cake
         //minSdk = 25 //Android 7 Nougat
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.1.2"
+        versionCode = 7
+        versionName = "1.1.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }

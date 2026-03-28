@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import java.util.UUID
 
@@ -28,6 +29,7 @@ object PrintJobQueueManager {
 
         val workRequest = OneTimeWorkRequestBuilder<PrintJobWorker>()
             .setInputData(input)
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
         val workId = workRequest.id.toString()
