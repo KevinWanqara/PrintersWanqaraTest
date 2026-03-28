@@ -141,7 +141,7 @@ internal class PrintJobNotifier(private val context: Context) {
             notificationId,
             buildStatusNotification(
                 notificationId = notificationId,
-                title = "impresión completada",
+                title = "impresión completada.",
                 statusText = contentText,
                 ongoing = false,
                 workId = workId,
